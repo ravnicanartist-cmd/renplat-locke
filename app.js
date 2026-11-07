@@ -1,0 +1,493 @@
+/* Renegade Platinum (PChal QoL build) Nuzlocke tracker + Boss Prep. Static page; everything runs in the browser. */
+(() => {
+  "use strict";
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const LOCAL = new Set(["gist", "sel", "tab", "show", "boxes", "pcboxes"]);     // per-device settings, not synced
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("rp." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem("rp." + k, JSON.stringify(v)); } catch (e) { /* storage full or blocked */ }
+      if (!LOCAL.has(k)) { try { localStorage.setItem("rp.updated", JSON.stringify(Date.now())); } catch (e) {} Sync.later(); } }
+  };
+  let META, IDS, M;
+  const cache = {};
+  const load = p => cache[p] || (cache[p] = fetch("data/" + p + "?v=1").then(r => { if (!r.ok) throw new Error(p); return r.json(); }));
+
+  // ---------------------------------------------------------------- state
+  const S = { tab: store.get("tab", "G"), sel: store.get("sel", {}), show: store.get("show", "all"), boxes: store.get("pcboxes", true),
+              starter: store.get("starter", null), gender: store.get("gender", null), team: store.get("team", {}) };
+  let NUZ = store.get("nuz", { on: true, shiny: true, areas: {}, dead: {}, extra: [] });
+  let STARS = new Set(store.get("stars", []));
+  let SAVE = store.get("save", null);
+  const saveNuz = () => store.set("nuz", NUZ);
+  const TABS = [["G", "Gyms & League"], ["V", "Villains"], ["R", "Rivals & required fights"], ["A", "Everything, in story order"]];
+  const STARTERS = ["Turtwig", "Chimchar", "Piplup"];
+
+  // ---------------------------------------------------------------- small helpers
+  const TC = { Normal: "#9a9a7a", Fire: "#e2662f", Water: "#4f7fe0", Electric: "#d8b21c", Grass: "#5ea83f", Ice: "#6cc4c4", Fighting: "#b2322b",
+    Poison: "#924396", Ground: "#c9a54a", Flying: "#8f7fe0", Psychic: "#e8507c", Bug: "#97a51e", Rock: "#a8913a", Ghost: "#6a558f",
+    Dragon: "#6a3ce8", Dark: "#6a5546", Steel: "#9a9ab8", Fairy: "#d97fa6" };
+  const type = t => `<span class="type" style="background:${TC[t] || "#555"}">${esc(t)}</span>`;
+  const FORMSLUG = { "Rotom-Heat": "rotom-heat", "Rotom-Wash": "rotom-wash", "Rotom-Frost": "rotom-frost", "Rotom-Fan": "rotom-fan",
+    "Rotom-Mow": "rotom-mow", "Wormadam-Sandy": "wormadam-sandy", "Wormadam-Trash": "wormadam-trash", "Giratina-Origin": "giratina-origin",
+    "Shaymin-Sky": "shaymin-sky", "Deoxys-Attack": "deoxys-attack", "Deoxys-Defense": "deoxys-defense", "Deoxys-Speed": "deoxys-speed" };
+  const slug = n => FORMSLUG[n] || String(n).toLowerCase().replace(/-f$/, "f").replace(/-m$/, "m").replace(/[^a-z0-9]/g, "");
+  const spr = (n, cls = "") => `<img class="${cls}" loading="lazy" alt="" src="https://play.pokemonshowdown.com/sprites/gen5/${slug(n)}.png" onerror="this.style.visibility='hidden'">`;
+  const fam = n => (META.mons[n] || {}).fam || n;
+  const fightIdx = k => META.order[k];
+  const F = k => META.fights[fightIdx(k)];
+  const tabsOf = k => META.fights[fightIdx(k)] && Object.keys(META.tabs).filter(t => META.tabs[t].includes(k));
+
+  // ---------------------------------------------------------------- what you own / have caught
+  const caughtFams = () => {
+    const s = new Set();
+    Object.values(NUZ.areas).forEach(a => { if (a.st === "caught" && a.s) s.add(fam(a.s)); });
+    (NUZ.extra || []).forEach(x => s.add(fam(x.s)));
+    if (SAVE) { SAVE.caught.forEach(n => s.add(fam(n))); SAVE.party.concat(SAVE.boxes).forEach(m => s.add(fam(m.name))); }
+    return s;
+  };
+  const aliveFams = () => {
+    const s = new Set();
+    Object.entries(NUZ.areas).forEach(([a, r]) => { if (r.st === "caught" && r.s && !NUZ.dead[a]) s.add(fam(r.s)); });
+    (NUZ.extra || []).forEach(x => { if (!x.dead) s.add(fam(x.s)); });
+    if (SAVE) SAVE.party.concat(SAVE.boxes).forEach(m => s.add(fam(m.name)));
+    return s;
+  };
+  let ALIVE = new Set(), CAUGHT = new Set();
+  const refreshOwned = () => { ALIVE = aliveFams(); CAUGHT = caughtFams(); };
+  const isMine = r => STARS.has(fam(r.s)) || (r.from || []).some(f => STARS.has(fam(f))) || ALIVE.has(fam(r.s));
+  function nuzTag(r) {
+    if (!NUZ.on) return null;
+    const f = fam(r.s);
+    if (ALIVE.has(f)) return ["boss", "Yours"];
+    if (CAUGHT.has(f)) return ["nz-dupe", "Dupe"];
+    if (!r.areas.length) return ["nz-gift", "Gift / trade (free extra)"];
+    const free = r.areas.filter(a => !NUZ.areas[a]);
+    return free.length ? ["nz-free", "Catch: " + free.join(", ")] : ["nz-used", "Areas used"];
+  }
+  const catchable = r => { const t = nuzTag(r); return t && (t[0] === "nz-free" || t[0] === "nz-gift"); };
+
+  // ---------------------------------------------------------------- fights beaten (from the save)
+  function beatenMax() {
+    if (!SAVE) return -1;
+    let mx = -1;
+    const BADGE = { roark: "Coal", gardenia: "Forest", fantina: "Relic", maylene: "Cobble", wake: "Fen", byron: "Mine", candice: "Icicle", volkner: "Beacon" };
+    META.fights.forEach((f, i) => {
+      // flags 1360+1064 / 1360+1065 (Cheryl, Mira) are shared with other game flags, so those two are inferred
+      const hit = f.ids.some(id => id !== 1064 && id !== 1065 && SAVE.beaten.includes(id)) || (BADGE[f.key] && SAVE.badges.includes(BADGE[f.key]));
+      if (hit) mx = Math.max(mx, i);
+    });
+    return mx;
+  }
+  const isBeaten = k => fightIdx(k) <= beatenMax();
+
+  // ---------------------------------------------------------------- variants (starter / gender / random E4 team)
+  function pickVariant(key, vars) {
+    let best = 0, bs = -1;
+    vars.forEach((v, i) => {
+      let s = 0;
+      if (v.starter && S.starter) s += v.starter === S.starter ? 4 : -9;
+      if (v.gender && S.gender) s += v.gender === S.gender ? 2 : -9;
+      if (v.team) s += v.team === (S.team[key] || 1) ? 1 : -9;
+      if (s > bs) { bs = s; best = i; }
+    });
+    return best;
+  }
+  function chips(key, vars) {
+    let h = "";
+    if (vars.some(v => v.starter)) h += `<span class="muted">Your starter:</span>` + STARTERS.map(s => `<button data-starter="${s}" class="${S.starter === s ? "on" : ""}">${s}</button>`).join("");
+    if (vars.some(v => v.gender)) h += `<span class="muted">&nbsp;You play as:</span>` + [["M", "a boy (you face Dawn)"], ["F", "a girl (you face Lucas)"]].map(([g, t]) => `<button data-gender="${g}" class="${S.gender === g ? "on" : ""}">${t}</button>`).join("");
+    if (vars.some(v => v.team)) h += `<span class="muted">Team (picked at random by the game):</span>` + [1, 2, 3, 4].map(n => `<button data-team="${n}" data-key="${key}" class="${(S.team[key] || 1) === n ? "on" : ""}">Team ${n}</button>`).join("");
+    return h ? `<div class="chips">${h}</div>` : "";
+  }
+
+  // ---------------------------------------------------------------- the save
+  function saveBar() {
+    const inp = `<input type="file" id="savefile" accept=".sav,.dsv,.bin,application/octet-stream">`;
+    if (!SAVE) return `<div class="savebar"><label class="savebtn">Read your save (.sav)${inp}</label>
+      <span class="muted">Loads your party, PC boxes, badges, beaten trainers, starter and Pokédex, then jumps to your next fight. It's read in your browser; with sync on, the result is kept in your private gist.</span></div>`;
+    return `<div class="savebar on"><b>${esc(SAVE.name || "Your save")}</b><span>${SAVE.gender === "F" ? "Girl" : "Boy"} · ${SAVE.badges.length} badge${SAVE.badges.length === 1 ? "" : "s"}${SAVE.starter ? " · starter " + esc(SAVE.starter) : ""} · ${SAVE.hours}h ${String(SAVE.minutes).padStart(2, "0")}m</span>
+      <span class="muted">${SAVE.party.length} in party, ${SAVE.boxes.length} in the PC · read ${esc(new Date(SAVE.read).toLocaleString())}</span>
+      <label class="savebtn small">Read again${inp}</label><button class="savebtn small" id="forget">Forget</button></div>`;
+  }
+  async function readFile(file) {
+    const buf = await file.arrayBuffer();
+    const prev = SAVE;
+    SAVE = SaveReader.readSave(buf, IDS, META);
+    store.set("save", SAVE);
+    S.gender = SAVE.gender; store.set("gender", S.gender);
+    const st = SAVE.starter || STARTERS.find(s => SAVE.party.concat(SAVE.boxes).some(m => fam(m.name) === s));
+    if (st) { S.starter = st; store.set("starter", st); }
+    S.sel = {}; store.set("sel", S.sel);
+    autoFill(prev);
+  }
+  // Nuzlocke: fill areas from where your Pokémon were met; starters and gifts are free extras
+  function autoFill(prev) {
+    if (!NUZ.on) return;
+    const giftAt = {}, wildAt = {};
+    META.areas.forEach(a => a.mons.forEach(([s, an, how]) => {
+      const o = ["gift", "egg", "fossil", "trade", "static"].includes(how) ? giftAt : wildAt;
+      (o[a.name] = o[a.name] || new Set()).add(fam(s));
+    }));
+    const starterFam = SAVE.starter ? fam(SAVE.starter) : null;
+    SAVE.party.concat(SAVE.boxes).forEach(m => {
+      const f = fam(m.name), a = m.met;
+      if (!a || !META.areas.some(x => x.name === a)) return;
+      if (f === starterFam && a === "Route 201") return;
+      const wild = wildAt[a] && wildAt[a].has(f), gift = giftAt[a] && giftAt[a].has(f);
+      if (gift && !wild) { if (!(NUZ.extra || []).some(x => fam(x.s) === f)) (NUZ.extra = NUZ.extra || []).push({ s: m.name, where: a, auto: 1 }); return; }
+      if (m.shiny && NUZ.shiny) { if (!(NUZ.extra || []).some(x => x.pid === m.pid)) (NUZ.extra = NUZ.extra || []).push({ s: m.name, where: a + " (shiny)", pid: m.pid, auto: 1 }); return; }
+      if (!NUZ.areas[a]) NUZ.areas[a] = { s: m.name, st: "caught", auto: 1 };
+    });
+    saveNuz();
+  }
+  const saveMon = m => M.mon(m.name, m.level, { ivs: m.ivs, evs: m.evs, nature: m.nature, ab: m.ability, item: m.item, moves: m.moves });
+
+  // ---------------------------------------------------------------- Boss Prep
+  let CUR = null;
+  function monCard(m, extra) {
+    const d = META.mons[m.s];
+    return `<div class="mon">${spr(m.s)}<div class="nm">${esc(m.s)} <span class="muted">Lv ${m.l}</span></div>
+      <div class="sub">${d ? d.t.map(type).join("") : ""}</div>
+      <div class="sub">${esc(m.a)} · ${esc(m.n)}${m.i ? " · @ " + esc(m.i) : ""} · IVs ${m.iv}</div>
+      <ul>${m.m.map(x => `<li>${esc(x)}</li>`).join("")}</ul>${extra || ""}</div>`;
+  }
+  const cellHtml = c => `<td class="mu ${c[0] ? "w" : "l"}"><a>${c[0] ? "✓" : "✗"}</a><span>${esc(c[1] || "—")} ${c[1] ? c[2] + "–" + c[3] + "%" : ""}</span>
+      <span class="muted">takes ${c[4] ? c[5] + "–" + c[6] + "%" : "nothing"}${c[7] ? "" : " · slower"}</span></td>`;
+  function sentence(c, m) {
+    return `<b>${c[0] ? "✓" : "✗"} vs ${esc(m.s)}</b>: ${c[7] ? "you move first" : "it moves first"}. ${c[1] ? `Your ${esc(c[1])} does ${c[2]}–${c[3]}%` : "You have no damaging move that hits it"}${c[4] ? `; its ${esc(c[4])} does ${c[5]}–${c[6]}% to you.` : "; it can't damage you."}`;
+  }
+
+  async function prep() {
+    refreshOwned();
+    const keys = META.tabs[S.tab] || META.tabs.G;
+    const bmax = beatenMax();
+    let key = S.sel[S.tab];
+    if (!key || !keys.includes(key)) key = (SAVE && keys.find(k => fightIdx(k) > bmax)) || keys[0];
+    const f = F(key), d = await load(`fights/${key}.json`);
+    const vi = pickVariant(key, d.variants.map(v => v.v)), cols = d.variants[vi].cols, team = cols.map(c => d.team[c]);
+    const N = d.pool.length;
+    CUR = { d, cols, team, key };
+    let h = `<p class="intro">Pick a fight, or read your save. The page lists every Pokémon you could have by then and works out who wins each 1-on-1 at your level cap.
+      Tap ☆ on the ones you have (in a Nuzlocke, the ones you've caught are filled in from the Areas page and your save).</p>` + saveBar();
+    h += `<div class="prepf tabs">` + TABS.map(([k, t]) => `<button data-tab="${k}" class="${S.tab === k ? "on" : ""}">${t}</button>`).join("") + `</div>`;
+    h += `<div class="bosspick">` + keys.map(k => { const x = F(k), won = SAVE && fightIdx(k) <= bmax;
+      return `<button data-k="${k}" class="${k === key ? "on" : ""} ${won ? "done" : ""} g-${S.tab === "A" ? ((tabsOf(k) || []).find(t => t !== "A") || "") : S.tab}" title="${esc(x.loc)} · cap ${x.cap}">${won ? "✓ " : ""}${esc(x.label)}</button>`; }).join("") + `</div>`;
+    h += chips(key, d.variants.map(v => v.v));
+    const kindTag = f.kind === "multi" ? `<span class="tag dbl">Double / multi battle: matchups are still 1-on-1</span>` : f.kind === "gauntlet" ? `<span class="tag dbl">Back-to-back fights</span>` : "";
+    h += `<div class="prephead"><b>${esc(f.label)}</b> <span class="muted">${esc(f.loc)} · level cap ${d.cap} · ${N} Pokémon you could have</span>${kindTag}
+      ${isBeaten(key) ? '<span class="tag boss">✓ Beaten (from your save)</span>' : ""}</div>`;
+    h += `<div class="team">` + team.map((m, j) => {
+      const c = cols[j], k = d.grid.filter(row => row[c][0]).length, pct = N ? Math.round(k / N * 100) : 0;
+      return monCard(m, `<div class="beat"><div class="barw"><div class="fill ${pct < 20 ? "lo" : pct < 40 ? "mid" : ""}" style="width:${pct}%"></div></div><span>${k} of ${N} beat it 1-on-1</span></div>`);
+    }).join("") + `</div>`;
+    const notes = [f.note].concat(f.notes || []).filter(Boolean);
+    if (notes.length) h += `<p class="muted">${notes.map(esc).join(" · ")}</p>`;
+
+    // your real Pokémon
+    if (SAVE) {
+      const bosses = team.map(M.bossMon);
+      const list = SAVE.party.concat(S.boxes ? SAVE.boxes : []);
+      h += `<h3 class="sec">Your Pokémon vs ${esc(f.label)}</h3>
+        <p class="prepf"><label class="chk"><input type="checkbox" id="pcboxes" ${S.boxes ? "checked" : ""}> Include PC boxes</label>
+        <span class="muted">Your real levels, natures, IVs, EVs, abilities, items and moves from the save.</span></p>`;
+      h += `<div class="wrap"><table class="prep mine"><thead><tr><th>Pokémon</th><th class="n">Wins</th>` + team.map(m => `<th class="bm">${spr(m.s)}<br>${esc(m.s)} ${m.l}</th>`).join("") + `</tr></thead><tbody>`;
+      const covered = team.map(() => false);
+      list.forEach((m, k) => {
+        const p = saveMon(m);
+        if (!p) return;
+        const cells = bosses.map(b => M.matchup(p, b)), wins = cells.filter(c => c[0]).length;
+        if (m.where === "Party") cells.forEach((c, j) => { if (c[0]) covered[j] = true; });
+        h += `<tr data-text="${esc((m.name + " " + m.moves.join(" ")).toLowerCase())}"><td class="pk">${spr(m.name)}<div><b>${esc(m.name)}</b> <span class="muted">Lv ${m.level}</span>
+          ${m.where === "Party" ? '<span class="tag boss">Party</span>' : `<span class="tag">PC</span>`}${m.level > d.cap ? `<span class="tag over">Over the cap (${d.cap})</span>` : ""}${m.hp === 0 ? '<span class="tag over">Fainted</span>' : ""}
+          <br><span class="muted">${esc(m.nature)} · ${esc(m.ability)}${m.item ? " · @ " + esc(m.item) : ""}</span><br><span class="muted">${esc(m.moves.join(", "))}</span></div></td>
+          <td class="n"><b>${wins}</b>/${team.length}</td>${cells.map(cellHtml).join("")}</tr>`;
+      });
+      h += `</tbody></table></div>`;
+      const gaps = team.filter((m, j) => !covered[j]);
+      h += gaps.length ? `<p class="note">Nothing in your party wins 1-on-1 against ${gaps.map(m => "<b>" + esc(m.s) + "</b>").join(", ")}.</p>` : `<p class="muted">Something in your party wins 1-on-1 against every Pokémon on this team.</p>`;
+    }
+
+    // your team (stars / caught)
+    const order = d.pool.map((r, i) => i).sort((a, b) => d.grid[b].reduce((s, c) => s + c[0], 0) - d.grid[a].reduce((s, c) => s + c[0], 0) || (d.pool[a].s < d.pool[b].s ? -1 : 1));
+    const winsOf = i => cols.reduce((s, c) => s + d.grid[i][c][0], 0);
+    order.sort((a, b) => winsOf(b) - winsOf(a) || (d.pool[a].s < d.pool[b].s ? -1 : 1));
+    const mineIdx = order.filter(i => isMine(d.pool[i]));
+    h += `<h3 class="sec">Your team vs ${esc(f.label)}</h3>`;
+    if (!mineIdx.length) h += `<p class="muted">Tap ☆ next to the Pokémon you have in the table below${NUZ.on ? ", log catches on the Areas page," : ""} or read your save.</p>`;
+    h += `<div class="cover">` + team.map((m, j) => {
+      const c = cols[j], win = mineIdx.filter(i => d.grid[i][c][0]);
+      let body;
+      if (win.length) body = win.map(i => `${esc(d.pool[i].s)} <span class="muted">(${esc(d.grid[i][c][1])} ${d.grid[i][c][2]}–${d.grid[i][c][3]}%)</span>`).join("<br>");
+      else {
+        const opts = order.filter(i => !isMine(d.pool[i]) && d.grid[i][c][0] && (!NUZ.on || catchable(d.pool[i]))).slice(0, 3);
+        body = `<span class="bad">None of yours wins this 1-on-1.</span>` + (opts.length ? `<br>Options you could get: ` + opts.map(i => { const r = d.pool[i], t = nuzTag(r);
+          return `<br>• <b>${esc(r.s)}</b> <span class="muted">${esc(r.s !== r.from[0] ? "from " + r.from.join("/") + ", " : "")}${esc((t && t[0] === "nz-free") ? t[1] : r.where.slice(0, 2).join("; "))}</span>`; }).join("") : `<br><span class="muted">Nothing obtainable by now wins it 1-on-1 either.</span>`);
+      }
+      return `<div class="cv ${win.length ? "" : "gap"}">${spr(m.s)}<div><b>${esc(m.s)}</b> <span class="muted">Lv ${m.l}</span><br>${body}</div></div>`;
+    }).join("") + `</div>`;
+
+    // every Pokémon you could have
+    const nNew = (d.new[S.tab] || d.new.A || []).length;
+    h += `<h3 class="sec">Every Pokémon you could have by ${esc(f.label)}</h3>
+      <div class="prepf"><span class="muted">Show:</span>` + [["all", "All"], ["mine", "Only mine"], ["new", `New since the last fight in this tab (${nNew})`]].concat(NUZ.on ? [["catch", "Catchable now"]] : [])
+        .map(([k, t]) => `<button data-show="${k}" class="${S.show === k ? "on" : ""}">${t}</button>`).join("") + `</div>
+      <p class="muted">Sorted by number of wins. Tap a row for the reasoning. ✓ means a good 1-on-1 matchup, not a guaranteed win.</p>`;
+    const newSet = new Set(d.new[S.tab] || d.new.A || []);
+    const shown = order.filter(i => S.show === "mine" ? isMine(d.pool[i]) : S.show === "new" ? newSet.has(i) : S.show === "catch" ? catchable(d.pool[i]) : true);
+    h += `<div class="wrap"><table class="prep"><thead><tr><th></th><th>Pokémon</th><th class="n">Wins</th>` + team.map(m => `<th class="bm">${spr(m.s)}<br>${esc(m.s)} ${m.l}</th>`).join("") + `</tr></thead><tbody>`;
+    shown.forEach(i => {
+      const r = d.pool[i], on = isMine(r), t = nuzTag(r);
+      h += `<tr class="pr" data-i="${i}" data-text="${esc((r.s + " " + r.from.join(" ") + " " + r.where.join(" ")).toLowerCase())}">
+        <td><button class="star ${on ? "on" : ""}" data-f="${esc(fam(r.s))}" title="I have this one">${on ? "★" : "☆"}</button></td>
+        <td class="pk">${spr(r.s)}<div><b>${esc(r.s)}</b> ${META.mons[r.s].t.map(type).join("")}${newSet.has(i) ? '<span class="tag new">New</span>' : ""}${t ? `<span class="tag ${t[0]}">${esc(t[1])}</span>` : ""}
+        <br><span class="muted">${r.s !== r.from[0] || r.from.length > 1 ? "from " + esc(r.from.join(" / ")) + " · " : ""}${esc(r.where.slice(0, 2).join("; "))}</span></div></td>
+        <td class="n"><b>${winsOf(i)}</b>/${team.length}</td>${cols.map(c => cellHtml(d.grid[i][c])).join("")}</tr>`;
+    });
+    if (!shown.length) h += `<tr><td colspan="${3 + team.length}" class="muted">Nothing to show with this filter.</td></tr>`;
+    h += `</tbody></table></div>`;
+
+    // what's new since the previous fight in this tab
+    const sn = d.since[S.tab] || d.since.A;
+    if (sn) {
+      h += `<h3 class="sec">TMs and items you can get since the previous fight in this tab</h3><div class="since">
+        <div><b>TMs / HMs</b><br>${sn.tm.length ? sn.tm.map(esc).join("<br>") : '<span class="muted">None new.</span>'}</div>
+        <div><b>Evolution items</b><br>${sn.items.length ? sn.items.map(esc).join(", ") : '<span class="muted">None new.</span>'}</div>
+        <div><b>Other</b><br>${sn.rods.concat(sn.other).length ? sn.rods.concat(sn.other).map(esc).join("<br>") : '<span class="muted">Nothing else new.</span>'}</div></div>`;
+    }
+    h += `<h3 class="sec">How this is worked out</h3><div class="how">
+      <p><b>Your options.</b> Every species you can catch, be given, trade for or hatch in the areas you can reach before this fight, respecting when Surf, the fishing rods and honey trees become available. Each is evolved as far as it can go by the level cap (${d.cap} here: the documentation's cap for this part of the game, which is the next gym leader's ace). Level, friendship (instant in this build) and item evolutions count once the item can be found; Razor Fang has no location in the docs, so Gligar stays Gligar.</p>
+      <p><b>Moves.</b> Level-up moves up to the cap (Lv 1 moves only once the Pastoria move reminder can be reached), TMs from when you can really pick them up (no Poké Mart sells TMs; gym TMs after the gym, Substitute removed), and every move tutor once Maylene is beaten (PChal's PC tutors).</p>
+      <p><b>Stats.</b> Yours: IVs 15, neutral nature, first ability, no item, no EVs. The boss: its real IVs, nature, ability, item and moves from the ROM and the documentation.</p>
+      <p><b>The fight.</b> Each side uses its strongest damaging move every turn (STAB, the type chart with Fairy, type-boosting items, Life Orb, Choice items, Huge/Pure Power, Intimidate, Technician, Thick Fat, immunity abilities, fixed-damage and multi-hit moves). Damage uses the average roll. The faster Pokémon moves first (ties go to you); you win if you need no more hits than it does, or strictly fewer if it moves first.</p>
+      <p><b>Not modelled:</b> status moves, stat boosts and setup, switching, critical hits, accuracy, weather, held-item healing and the AI's choices. So ✓ means a good 1-on-1 matchup, not a guaranteed win, and "X of N beat it" is the share of Pokémon you could have that win 1-on-1, not the share of players who'll have one.</p></div>`;
+    return h;
+  }
+  function prepDetail(tr) {
+    const nx = tr.nextElementSibling;
+    if (nx && nx.classList.contains("det")) { nx.remove(); return; }
+    const { d, cols, team } = CUR, i = +tr.dataset.i, r = d.pool[i];
+    tr.insertAdjacentHTML("afterend", `<tr class="det"><td colspan="${3 + team.length}"><div class="cols">
+      <div><b>Matchups at level ${d.cap}</b><ul class="ml">${cols.map((c, j) => `<li>${sentence(d.grid[i][c], team[j])}</li>`).join("")}</ul></div>
+      <div><b>Moves counted</b> <span class="muted">(ability ${esc(r.ab)})</span><br>${r.moves.map(m => `<span class="chip">${esc(m)}</span>`).join("") || '<span class="muted">No damaging moves.</span>'}
+      <br><br><b>Where</b><br>${r.where.map(esc).join("<br>")}</div></div></td></tr>`);
+  }
+
+  // ---------------------------------------------------------------- Areas (Nuzlocke)
+  function areaGroups() {
+    const g = [];
+    META.areas.forEach(a => {
+      const gi = a.gate == null ? 999 : a.gate;
+      const nextBoss = META.fights.slice(gi + 1).find(f => ["roark", "gardenia", "fantina", "maylene", "wake", "byron", "candice", "volkner", "cynthia"].includes(f.key));
+      const title = gi === 999 ? "After the Elite Four" : nextBoss ? `Before ${nextBoss.label.replace(/ \+.*/, "")} (cap ${nextBoss.cap})` : "Late game";
+      let grp = g.find(x => x.title === title);
+      if (!grp) g.push(grp = { title, areas: [] });
+      grp.areas.push(a);
+    });
+    return g;
+  }
+  function run() {
+    refreshOwned();
+    const used = Object.values(NUZ.areas).filter(a => a.st).length, dead = Object.keys(NUZ.dead).length;
+    let h = `<p class="intro">Your Nuzlocke, area by area in story order. Log the first encounter in each area. Families you've already caught are struck through (dupes clause)${NUZ.shiny ? "; shinies go in the extras as the shiny clause allows" : ""}. Gifts, starters and trades are free extras. Reading your save fills in areas from where each of your Pokémon was met.</p>
+      ${saveBar()}<div class="sum"><b>${used}</b> areas used · <b>${ALIVE.size}</b> families alive · <b>${dead}</b> dead · <label class="chk"><input type="checkbox" id="nzon" ${NUZ.on ? "checked" : ""}> Nuzlocke mode</label></div>`;
+    areaGroups().forEach(g => {
+      h += `<details class="grp" open><summary>${esc(g.title)}</summary>`;
+      g.areas.forEach(a => {
+        const r = NUZ.areas[a.name] || {}, wild = a.mons.filter(m => !["gift", "egg", "fossil", "trade", "static"].includes(m[2])), gifts = a.mons.filter(m => !wild.includes(m));
+        const specs = [...new Set(wild.map(m => m[0]))];
+        const opts = specs.map(s => `<option value="${esc(s)}" ${r.s === s ? "selected" : ""}>${esc(s)}${CAUGHT.has(fam(s)) && r.s !== s ? " (dupe)" : ""}</option>`).join("");
+        const isDead = NUZ.dead[a.name];
+        h += `<div class="area ${r.st === "caught" ? (isDead ? "dead" : "used") : r.st ? "fail" : ""}" data-text="${esc((a.name + " " + specs.join(" ")).toLowerCase())}">
+          <div class="ah"><b>${esc(a.name)}</b>${r.auto ? '<span class="tag">from your save</span>' : ""}${isDead ? '<span class="tag over">Dead</span>' : ""}
+          ${wild.length ? `<select class="field" data-area="${esc(a.name)}"><option value="">— not yet —</option>${opts}<option value="!failed" ${r.st === "failed" ? "selected" : ""}>Failed (fainted / fled)</option><option value="!skip" ${r.st === "skip" ? "selected" : ""}>Skipped</option></select>` : '<span class="muted">Gifts only</span>'}
+          ${r.st === "caught" ? `<button class="btn ${isDead ? "" : "red"}" data-dead="${esc(a.name)}">${isDead ? "Undo death" : "It died"}</button>` : ""}</div>
+          <div class="enc">${wild.map(m => `<span class="${CAUGHT.has(fam(m[0])) && r.s !== m[0] ? "dupe" : ""}" title="${esc(m[1])}">${spr(m[0])}${esc(m[0])} <span class="muted">${esc(m[2])}</span></span>`).join("")}</div>
+          ${gifts.length ? `<div class="enc">${gifts.map(m => `<span title="${esc(m[1])}">${spr(m[0])}${esc(m[0])} <span class="muted">${esc(m[2])} · free</span></span>`).join("")}</div>` : ""}</div>`;
+      });
+      h += `</details>`;
+    });
+    return h;
+  }
+
+  // ---------------------------------------------------------------- Box & graveyard
+  function box() {
+    refreshOwned();
+    const byFam = {};
+    if (SAVE) SAVE.party.concat(SAVE.boxes).forEach(m => { (byFam[fam(m.name)] = byFam[fam(m.name)] || []).push(m); });
+    const rows = Object.entries(NUZ.areas).filter(([a, r]) => r.st === "caught" && r.s).map(([a, r]) => ({ area: a, s: r.s, dead: !!NUZ.dead[a] }))
+      .concat((NUZ.extra || []).map((x, i) => ({ area: x.where, s: x.s, dead: !!x.dead, extra: i })));
+    const card = x => { const sv = (byFam[fam(x.s)] || [])[0];
+      const n = sv ? sv.name : x.s;
+      return `<div class="card" data-text="${esc((n + " " + x.area).toLowerCase())}">${spr(n)}<div><b>${esc(n)}</b> ${sv ? `<span class="muted">Lv ${sv.level} · ${esc(sv.where)}</span>` : ""}${sv && sv.hp === 0 ? '<span class="tag over">Fainted in party</span>' : ""}
+        <br><span class="muted">${esc(x.area)}${x.extra != null ? " · extra" : ""}</span>${sv ? `<br><span class="muted">${esc(sv.nature)} · ${esc(sv.ability)} · ${esc(sv.moves.join(", "))}</span>` : ""}</div>
+        <div class="acts"><button class="btn ${x.dead ? "" : "red"}" ${x.extra != null ? `data-xdead="${x.extra}"` : `data-dead="${esc(x.area)}"`}>${x.dead ? "Revive (undo)" : "It died"}</button></div></div>`; };
+    const alive = rows.filter(x => !x.dead), dead = rows.filter(x => x.dead);
+    let h = `<p class="intro">Everything you've caught in this run. Mark a Pokémon dead when it faints; it moves to the graveyard and its area stays used.</p>${saveBar()}`;
+    if (SAVE) {
+      const tracked = new Set(rows.map(x => fam(x.s)));
+      const fainted = SAVE.party.filter(m => m.hp === 0);
+      const missing = alive.filter(x => !byFam[fam(x.s)]);
+      if (fainted.length || missing.length) h += `<div class="sum"><b>From your save</b><ul>${fainted.map(m => `<li>${esc(m.name)} has 0 HP in your party.</li>`).join("")}
+        ${missing.map(x => `<li>${esc(x.s)} (${esc(x.area)}) isn't in your party or boxes. Did it die or get released?</li>`).join("")}</ul></div>`;
+      const untracked = SAVE.party.concat(SAVE.boxes).filter(m => !tracked.has(fam(m.name)));
+      if (untracked.length) h += `<p class="muted">In your save but not logged: ${untracked.map(m => esc(m.name) + " (" + esc(m.met || "?") + ")").join(", ")}.</p>`;
+    }
+    h += `<h3 class="sec">Alive (${alive.length})</h3><div class="boxg">${alive.map(card).join("") || '<p class="muted">Nothing logged yet. Use the Areas page or read your save.</p>'}</div>`;
+    h += `<h3 class="sec">Graveyard (${dead.length})</h3><div class="boxg">${dead.map(card).join("") || '<p class="muted">Nobody yet.</p>'}</div>`;
+    return h;
+  }
+
+  // ---------------------------------------------------------------- Pokédex
+  function dex() {
+    const where = {};
+    META.areas.forEach(a => a.mons.forEach(([s, an, how]) => { (where[s] = where[s] || new Set()).add(`${an} (${how})`); }));
+    const ev = {};
+    Object.entries(META.evos).forEach(([a, l]) => l.forEach(e => { (ev[a] = ev[a] || []).push(`→ ${e.to} (${e.kind === "level" ? "Lv " + e.p : e.kind === "friendship" ? "friendship, instant" : e.p})`); }));
+    let h = `<p class="intro">Renegade Platinum species data as it is in this ROM (Complete patch): types, base stats, abilities, evolutions and where to find each one.</p>
+      <div class="wrap"><table class="dex"><thead><tr><th></th><th>#</th><th>Pokémon</th><th>Types</th><th class="n">HP</th><th class="n">Atk</th><th class="n">Def</th><th class="n">SpA</th><th class="n">SpD</th><th class="n">Spe</th><th class="n">Total</th><th>Abilities</th></tr></thead><tbody>`;
+    Object.entries(META.mons).forEach(([n, d]) => {
+      const w = [...(where[n] || [])];
+      h += `<tr class="row" data-text="${esc((n + " " + d.t.join(" ") + " " + d.ab.join(" ") + " " + w.join(" ")).toLowerCase())}"><td>${spr(n)}</td><td class="muted">${d.no}</td><td><b>${esc(n)}</b>
+        ${ev[n] ? `<br><span class="muted">${esc(ev[n].join(", "))}</span>` : ""}${w.length ? `<br><span class="muted">${esc(w.slice(0, 4).join("; "))}${w.length > 4 ? "…" : ""}</span>` : ""}</td>
+        <td>${d.t.map(type).join("")}</td>${d.bs.map(x => `<td class="n">${x}</td>`).join("")}<td class="n"><b>${d.bs.reduce((a, b) => a + b, 0)}</b></td><td>${esc(d.ab.join(" / "))}</td></tr>`;
+    });
+    return h + `</tbody></table></div>`;
+  }
+
+  // ---------------------------------------------------------------- Save & sync
+  function data() {
+    const g = store.get("gist", {});
+    let h = `<p class="intro">Read your save, keep your run in sync between devices, and back it up.</p>${saveBar()}`;
+    if (SAVE) {
+      const won = META.fights.filter((f, i) => i <= beatenMax());
+      h += `<div class="sum"><b>What the save reader found</b><ul>
+        <li>Trainer ${esc(SAVE.name)} (${SAVE.gender === "F" ? "girl" : "boy"}), ID ${SAVE.tid}, play time ${SAVE.hours}h ${SAVE.minutes}m (from the ${SAVE.block} save copy, the newer one)</li>
+        <li>Badges: ${SAVE.badges.length ? SAVE.badges.map(esc).join(", ") : "none"}</li>
+        <li>Starter: ${esc(SAVE.starter || "not chosen yet")}</li>
+        <li>Party: ${SAVE.party.length ? SAVE.party.map(m => `${esc(m.name)} Lv ${m.level} (${esc(m.moves.join(", "))})`).join("; ") : "empty"}</li>
+        <li>PC boxes: ${SAVE.boxes.length} Pokémon</li><li>Pokédex: ${SAVE.caught.length} caught</li>
+        <li>Story fights won: ${won.length ? esc(won.filter(f => /Leader|Commander|Boss|Rival|Elite|Champion|Dawn|Lucas|Barry/.test(f.names.join(" "))).map(f => f.label).join(", ")) : "none yet"}</li></ul></div>`;
+    }
+    h += `<h3 class="sec">Rules</h3><div class="sum"><label class="chk"><input type="checkbox" id="nzon" ${NUZ.on ? "checked" : ""}> Nuzlocke mode (first encounter per area, dupes clause)</label><br>
+      <label class="chk"><input type="checkbox" id="nzshiny" ${NUZ.shiny ? "checked" : ""}> Shiny clause (shinies don't use the area)</label>
+      <p class="muted">Your other rules (no resets, set mode, no items in battle, level caps) aren't something the page can check, except the caps: Pokémon over the cap are tagged in Boss Prep.</p></div>`;
+    h += `<h3 class="sec">Sync between devices (private gist)</h3><div class="sum">
+      <p class="muted">Keeps your run, stars and the last save you read in a private gist on your GitHub account. Make a token at GitHub → Settings → Developer settings → Personal access tokens → Fine-grained, with only "Gists: read and write", then paste it here on each device. The token stays on this device.</p>
+      <input class="field" id="gtoken" type="password" placeholder="GitHub token" value="${esc(g.token || "")}" style="width:280px"> <button class="btn pri" id="gsave">Save token and sync</button>
+      ${g.token ? `<button class="btn" id="gpull">Pull from gist</button><button class="btn" id="gpush">Push to gist</button><button class="btn red" id="gforget">Stop syncing on this device</button>` : ""}
+      <p class="muted" id="gstat">${esc(Sync.status)}</p></div>`;
+    h += `<h3 class="sec">Backup</h3><div class="sum"><button class="btn" id="bdown">Download a backup</button> <label class="btn">Restore a backup<input type="file" id="bup" accept=".json" style="display:none"></label>
+      <button class="btn red" id="reset">Start a new run</button></div>`;
+    return h;
+  }
+
+  // ---------------------------------------------------------------- gist sync
+  const Sync = {
+    status: "", t: null,
+    blob() { return { v: 1, updated: store.get("updated", 0), nuz: NUZ, stars: [...STARS], save: SAVE, starter: S.starter, gender: S.gender, team: S.team }; },
+    apply(b) {
+      NUZ = b.nuz || NUZ; STARS = new Set(b.stars || []); SAVE = b.save || null;
+      S.starter = b.starter || S.starter; S.gender = b.gender || S.gender; S.team = b.team || S.team;
+      const put = (k, v) => { try { localStorage.setItem("rp." + k, JSON.stringify(v)); } catch (e) {} };
+      put("nuz", NUZ); put("stars", [...STARS]); put("save", SAVE); put("starter", S.starter); put("gender", S.gender); put("team", S.team); put("updated", b.updated || Date.now());
+    },
+    async api(method, url, body) {
+      const g = store.get("gist", {});
+      const r = await fetch("https://api.github.com" + url, { method, headers: { Authorization: "Bearer " + g.token, Accept: "application/vnd.github+json", ...(body ? { "Content-Type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined });
+      if (!r.ok) throw new Error("GitHub said " + r.status);
+      return r.json();
+    },
+    async find() {
+      const g = store.get("gist", {});
+      if (g.id) return g.id;
+      const list = await this.api("GET", "/gists?per_page=100");
+      const hit = list.find(x => x.files && x.files["renplat-locke.json"]);
+      if (hit) { g.id = hit.id; store.set("gist", g); }
+      return g.id;
+    },
+    async push() {
+      const g = store.get("gist", {});
+      if (!g.token) return;
+      const files = { "renplat-locke.json": { content: JSON.stringify(this.blob()) } };
+      const id = await this.find();
+      if (id) await this.api("PATCH", "/gists/" + id, { files });
+      else { const r = await this.api("POST", "/gists", { description: "Renegade Platinum Nuzlocke (renplat-locke)", public: false, files }); g.id = r.id; store.set("gist", g); }
+      this.status = "Pushed " + new Date().toLocaleTimeString();
+    },
+    async pull(force) {
+      const g = store.get("gist", {});
+      if (!g.token) return false;
+      const id = await this.find();
+      if (!id) { this.status = "No gist yet; it'll be made on the first push."; return false; }
+      const r = await this.api("GET", "/gists/" + id);
+      const f = r.files["renplat-locke.json"];
+      let txt = f.content;
+      if (f.truncated) txt = await (await fetch(f.raw_url)).text();
+      const b = JSON.parse(txt);
+      if (force || (b.updated || 0) > store.get("updated", 0)) { this.apply(b); this.status = "Pulled " + new Date().toLocaleTimeString(); return true; }
+      this.status = "Up to date " + new Date().toLocaleTimeString();
+      return false;
+    },
+    later() { if (!store.get("gist", {}).token) return; clearTimeout(this.t); this.t = setTimeout(() => this.push().catch(e => { this.status = "Sync failed: " + e.message; }), 2500); }
+  };
+
+  // ---------------------------------------------------------------- shell
+  const PAGES = { prep, run, box, dex, data };
+  async function show() {
+    const page = (location.hash || "#prep").slice(1).split("/")[0];
+    const fn = PAGES[page] || prep;
+    document.querySelectorAll("#nav a").forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#" + (PAGES[page] ? page : "prep")));
+    try { $("#main").innerHTML = await fn(); } catch (e) { $("#main").innerHTML = `<p class="bad">Something went wrong: ${esc(e.message)}</p>`; console.error(e); }
+    filter();
+  }
+  function filter() {
+    const q = $("#q").value.trim().toLowerCase();
+    document.querySelectorAll("#main [data-text]").forEach(el => { el.style.display = !q || el.dataset.text.includes(q) ? "" : "none"; });
+  }
+  const keep = fn => { const y = scrollY; return show().then(() => scrollTo(0, y)); };
+  document.addEventListener("click", ev => {
+    const t = ev.target;
+    const st = t.closest(".star");
+    if (st) { const f = st.dataset.f; STARS.has(f) ? STARS.delete(f) : STARS.add(f); store.set("stars", [...STARS]); keep(); return; }
+    const b = t.closest(".bosspick button");
+    if (b) { S.sel[S.tab] = b.dataset.k; store.set("sel", S.sel); keep(); return; }
+    const tb = t.closest(".tabs button");
+    if (tb) { S.tab = tb.dataset.tab; store.set("tab", S.tab); show(); return; }
+    if (t.dataset.starter) { S.starter = t.dataset.starter; store.set("starter", S.starter); keep(); return; }
+    if (t.dataset.gender) { S.gender = t.dataset.gender; store.set("gender", S.gender); keep(); return; }
+    if (t.dataset.team) { S.team[t.dataset.key] = +t.dataset.team; store.set("team", S.team); keep(); return; }
+    if (t.dataset.show) { S.show = t.dataset.show; store.set("show", S.show); keep(); return; }
+    if (t.dataset.dead) { const a = t.dataset.dead; NUZ.dead[a] ? delete NUZ.dead[a] : (NUZ.dead[a] = Date.now()); saveNuz(); keep(); return; }
+    if (t.dataset.xdead) { const x = NUZ.extra[+t.dataset.xdead]; x.dead = !x.dead; saveNuz(); keep(); return; }
+    if (t.id === "forget") { SAVE = null; store.set("save", null); keep(); return; }
+    if (t.id === "bdown") { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(Sync.blob())], { type: "application/json" })); a.download = "renplat-locke-backup.json"; a.click(); return; }
+    if (t.id === "reset") { if (confirm("Clear this run's areas, deaths and extras? Your stars and save stay.")) { NUZ = { on: true, shiny: NUZ.shiny, areas: {}, dead: {}, extra: [] }; saveNuz(); keep(); } return; }
+    if (t.id === "gsave") { const g = store.get("gist", {}); g.token = $("#gtoken").value.trim(); store.set("gist", g);
+      Sync.pull(false).then(() => Sync.push()).catch(e => { Sync.status = "Sync failed: " + e.message; }).then(() => keep()); return; }
+    if (t.id === "gpull") { Sync.pull(true).catch(e => { Sync.status = "Pull failed: " + e.message; }).then(() => keep()); return; }
+    if (t.id === "gpush") { Sync.push().catch(e => { Sync.status = "Push failed: " + e.message; }).then(() => keep()); return; }
+    if (t.id === "gforget") { store.set("gist", {}); Sync.status = "Not syncing on this device."; keep(); return; }
+    const tr = t.closest("tr.pr");
+    if (tr && !t.closest("button")) prepDetail(tr);
+  });
+  document.addEventListener("change", ev => {
+    const t = ev.target;
+    if (t.id === "savefile" && t.files[0]) { readFile(t.files[0]).then(() => keep()).catch(e => alert("Couldn't read that save: " + e.message)); return; }
+    if (t.id === "pcboxes") { S.boxes = t.checked; store.set("pcboxes", S.boxes); keep(); return; }
+    if (t.id === "nzon") { NUZ.on = t.checked; saveNuz(); keep(); return; }
+    if (t.id === "nzshiny") { NUZ.shiny = t.checked; saveNuz(); return; }
+    if (t.dataset.area) { const a = t.dataset.area, v = t.value;
+      if (!v) delete NUZ.areas[a]; else if (v[0] === "!") NUZ.areas[a] = { st: v.slice(1) }; else NUZ.areas[a] = { s: v, st: "caught" };
+      if (!NUZ.areas[a] || NUZ.areas[a].st !== "caught") delete NUZ.dead[a];
+      saveNuz(); keep(); return; }
+    if (t.id === "bup" && t.files[0]) { t.files[0].text().then(x => { Sync.apply(JSON.parse(x)); keep(); }).catch(e => alert("Couldn't read that backup: " + e.message)); }
+  });
+  $("#q").addEventListener("input", filter);
+  addEventListener("hashchange", () => { $("#q").value = ""; show(); });
+  Promise.all([load("meta.json"), load("ids.json")]).then(async ([m, i]) => {
+    META = m; IDS = i; M = Model(META);
+    await show();
+    if (store.get("gist", {}).token) Sync.pull(false).then(ch => { if (ch) show(); }).catch(e => { Sync.status = "Sync failed: " + e.message; });
+  }).catch(e => { $("#main").innerHTML = `<p class="bad">Couldn't load the data: ${esc(e.message)}</p>`; });
+})();
