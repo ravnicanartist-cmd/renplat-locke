@@ -179,8 +179,26 @@ def rom_team(tid):
         out.append({"s": sp, "l": lv, "i": item, "m": mv, "iv": diff * 31 // 255})
     return out
 
+_RP = None
+def calc_sets():
+    global _RP
+    if _RP is None:
+        t = open("/home/claude/repo/calc/backups/rp.js", encoding="utf-8").read()
+        j = json.loads(t[t.index("{"):t.rindex("}") + 1])
+        _RP = {}
+        for sp, d in j["formatted_sets"].items():
+            for n, v in d.items():
+                _RP.setdefault(v.get("tr_id"), []).append((sp, n))
+    return _RP
+
 def boss_team(tid):
     team = rom_team(tid)
+    sets = list(calc_sets().get(tid, []))
+    for m in team:
+        k = KEY(m["s"])
+        hit = next((x for x in sets if KEY(x[0].replace("-Glitched", "")) == k), None)
+        if hit:
+            m["calc"] = f"{hit[0]} ({hit[1]})"; sets.remove(hit)
     doc = next((t for t in TRALL if t["id"] == tid and t["team"]), None)
     for k, m in enumerate(team):
         d = doc["team"][k] if doc and k < len(doc["team"]) else None

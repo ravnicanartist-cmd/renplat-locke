@@ -15,3 +15,7 @@ Everything runs in the browser. Open `index.html` through any static server, or 
 `node test/model.test.js` recomputes every matchup with the JavaScript model and checks it against Python's (`104420 matchups, 0 differences`).
 
 The save reader (`js/savereader_pt.js`) follows PKHeX's Platinum code for every offset; the trainer-flag numbering comes from pret/pokeplatinum.
+
+## Calc
+
+`calc/` is a copy of hzla's [Dynamic Calc](https://github.com/hzla/Dynamic-Calc) (built on the Smogon/Honko damage calc, MIT) with its Renegade Platinum data (`calc/backups/rp.js`). It opens on Renegade Platinum, its large sprite folders load from the original site, and analytics are removed. Boss Prep links into it with `&opp=<trainer set>` and, from a matchup, `&me=<species>&lv=<cap>&mv=<moves>` (`calc/js/renplat_links.js`).

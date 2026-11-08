@@ -186,7 +186,7 @@ LEGENDARY = {"Mew", "Zapdos", "Moltres", "Articuno", "Celebi", "Entei", "Raikou"
              "Latias", "Latios", "Deoxys (Normal)", "Magikarp (GER)"}
 
 # Evolution items -> fight after which you can get one (from the item locations sheet)
-EVO_ITEM = {"Fire Stone": "barry_203", "Water Stone": "barry_203", "Thunderstone": "barry_203", "Thunder Stone": "barry_203",
+EVO_ITEM = {"Fire Stone": "barry_203", "Water Stone": "barry_203", "Thunder Stone": "barry_203",
             "Leaf Stone": "barry_203", "Moon Stone": "barry_203", "Sun Stone": "barry_203", "Ice Stone": "barry_203",
             "Oval Stone": "barry_203",                                   # all in Oreburgh Mine / Oreburgh City
             "Shiny Stone": "aaron_gate", "Up-Grade": "aaron_gate",       # Hearthome City
@@ -194,7 +194,7 @@ EVO_ITEM = {"Fire Stone": "barry_203", "Water Stone": "barry_203", "Thunderstone
             "Metal Coat": "jupiter_eterna",                              # Wayward Cave, Eterna bike shop, Route 207
             "Reaper Cloth": "barry_hearthome", "Razor Claw": "barry_hearthome",   # Lost Tower, Route 215
             "Dragon Scale": "saturn_mansion", "Dubious Disc": "saturn_mansion",   # Veilstone City
-            "Electrizer": "maylene", "Electirizer": "maylene", "Magmarizer": "maylene",  # Hotel Grand Lake, Route 213
+            "Electirizer": "maylene", "Magmarizer": "maylene",  # Hotel Grand Lake, Route 213
             "Protector": "barry_canalave",                               # Iron Island
             "Prism Scale": "gardenia",                                   # Mt. Coronet
             "Deep Sea Scale": "roark", "Deep Sea Tooth": "roark",        # Floaroma Town

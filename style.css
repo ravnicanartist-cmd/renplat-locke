@@ -147,3 +147,5 @@ html, body { overflow-x: hidden; }
   .cover, .boxg { grid-template-columns: 1fr; }
 }
 tr.det td > .cols { position: sticky; left: 0; max-width: calc(100vw - 48px); }
+a.calc { display: inline-block; margin-top: 6px; font-size: 12px; color: var(--accent2); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; text-decoration: none; }
+.ml a.calc { margin: 0 0 0 4px; }

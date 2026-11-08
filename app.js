@@ -11,7 +11,7 @@
   };
   let META, IDS, M;
   const cache = {};
-  const load = p => cache[p] || (cache[p] = fetch("data/" + p + "?v=1").then(r => { if (!r.ok) throw new Error(p); return r.json(); }));
+  const load = p => cache[p] || (cache[p] = fetch("data/" + p + "?v=2").then(r => { if (!r.ok) throw new Error(p); return r.json(); }));
 
   // ---------------------------------------------------------------- state
   const S = { tab: store.get("tab", "G"), sel: store.get("sel", {}), show: store.get("show", "all"), boxes: store.get("pcboxes", true),
@@ -35,6 +35,9 @@
   const spr = (n, cls = "") => `<img class="${cls}" loading="lazy" alt="" src="https://play.pokemonshowdown.com/sprites/gen5/${slug(n)}.png" onerror="this.style.visibility='hidden'">`;
   const fam = n => (META.mons[n] || {}).fam || n;
   const fightIdx = k => META.order[k];
+  const CALC = "calc/?data=26138cc1d500b0cf7334&gen=7&switchIn=4&types=6&dmgGen=4";
+  const calcName = n => String(n).replace(/'/g, "\u2019");
+  const calcLink = (opp, me, lv, mv, txt) => opp ? `<a class="calc" target="_blank" rel="noopener" href="${CALC}&opp=${encodeURIComponent(opp)}${me ? `&me=${encodeURIComponent(calcName(me))}&lv=${lv}&mv=${encodeURIComponent(mv.join(","))}` : ""}">${txt || "Calc"}</a>` : "";
   const F = k => META.fights[fightIdx(k)];
   const tabsOf = k => META.fights[fightIdx(k)] && Object.keys(META.tabs).filter(t => META.tabs[t].includes(k));
 
@@ -150,7 +153,7 @@
     return `<div class="mon">${spr(m.s)}<div class="nm">${esc(m.s)} <span class="muted">Lv ${m.l}</span></div>
       <div class="sub">${d ? d.t.map(type).join("") : ""}</div>
       <div class="sub">${esc(m.a)} · ${esc(m.n)}${m.i ? " · @ " + esc(m.i) : ""} · IVs ${m.iv}</div>
-      <ul>${m.m.map(x => `<li>${esc(x)}</li>`).join("")}</ul>${extra || ""}</div>`;
+      <ul>${m.m.map(x => `<li>${esc(x)}</li>`).join("")}</ul>${extra || ""}${calcLink(m.calc, null, 0, [], "Open in the calc")}</div>`;
   }
   const cellHtml = c => `<td class="mu ${c[0] ? "w" : "l"}"><a>${c[0] ? "✓" : "✗"}</a><span>${esc(c[1] || "—")} ${c[1] ? c[2] + "–" + c[3] + "%" : ""}</span>
       <span class="muted">takes ${c[4] ? c[5] + "–" + c[6] + "%" : "nothing"}${c[7] ? "" : " · slower"}</span></td>`;
@@ -268,7 +271,8 @@
     if (nx && nx.classList.contains("det")) { nx.remove(); return; }
     const { d, cols, team } = CUR, i = +tr.dataset.i, r = d.pool[i];
     tr.insertAdjacentHTML("afterend", `<tr class="det"><td colspan="${3 + team.length}"><div class="cols">
-      <div><b>Matchups at level ${d.cap}</b><ul class="ml">${cols.map((c, j) => `<li>${sentence(d.grid[i][c], team[j])}</li>`).join("")}</ul></div>
+      <div><b>Matchups at level ${d.cap}</b><ul class="ml">${cols.map((c, j) => { const g = d.grid[i][c], mv = [g[1]].concat(r.moves.filter(x => x !== g[1])).filter(Boolean).slice(0, 4);
+        return `<li>${sentence(g, team[j])} ${calcLink(team[j].calc, r.s, d.cap, mv)}</li>`; }).join("")}</ul></div>
       <div><b>Moves counted</b> <span class="muted">(ability ${esc(r.ab)})</span><br>${r.moves.map(m => `<span class="chip">${esc(m)}</span>`).join("") || '<span class="muted">No damaging moves.</span>'}
       <br><br><b>Where</b><br>${r.where.map(esc).join("<br>")}</div></div></td></tr>`);
   }
