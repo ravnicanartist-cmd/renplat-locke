@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sacred Gold Nuzlocke + Boss Prep</title>
+<meta name="description" content="Nuzlocke tracker, boss prep and every trainer team for Pokémon Sacred Gold (PChal QoL build), with a save reader that runs in your browser.">
+<meta name="theme-color" content="#1b2433">
+<link rel="stylesheet" href="../shared/style.css?v=5">
+</head>
+<body>
+<header>
+  <div class="bar">
+    <a class="brand" href="../">Sacred Gold <span>Nuzlocke</span></a>
+    <nav id="nav"></nav>
+  </div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search this page" autocomplete="off">
+  </div>
+</header>
+<main id="main"><p class="muted">Loading…</p></main>
+<a id="top" href="#" onclick="scrollTo(0,0);return false" title="Back to top">↑</a>
+<script src="../shared/ai4.js?v=1"></script>
+<script>
+window.GAME = {
+  id: "sg", store: "sg", gist: "sg-locke.json", v: 1, save: "hgss",
+  tabs: [["G", "Gyms, League & Kanto"], ["V", "Team Rocket executives"], ["A", "Everything, in story order"]],
+  starters: ["Chikorita", "Cyndaquil", "Totodile"],
+  calc: "../calc/?data=03e577af7cc9856a1f42&gen=4&dmgGen=4&types=4",
+  badges: { falkner: "Zephyr", bugsy: "Hive", whitney: "Plain", morty: "Fog", chuck: "Storm", jasmine: "Mineral", pryce: "Glacier", clair: "Rising",
+            brock: "Boulder", misty: "Cascade", surge: "Thunder", erika: "Rainbow", janine: "Soul", sabrina: "Marsh", blaine: "Volcano", blue: "Earth" },
+  leaders: ["falkner", "bugsy", "whitney", "morty", "chuck", "jasmine", "pryce", "clair", "lance"],
+  metAlias: { "Dark Cave": "Dark Cave (Violet City Side)" },
+  nav: [["#prep", "Boss Prep"], ["#trainers", "Trainers"], ["#run", "Nuzlocke"], ["#box", "Box"], ["#dex", "Pokédex"], ["#ai", "Enemy AI"],
+        ["#data", "Save &amp; sync"], ["../calc/?data=03e577af7cc9856a1f42&gen=4&dmgGen=4&types=4", "Calc ↗"], ["../#gauntlet", "Gauntlet"]],
+  dexIntro: "Sacred Gold species data as it is in this ROM (PChal QoL build, HeartGold base): types, base stats, abilities, evolutions and where to find each one.",
+  trainersNote: "Teams from PChal's Trainer Battles sheet, with levels, items, moves and IVs checked against the ROM.",
+  how: cap => `
+      <p><b>Your options.</b> Every species you can catch, be given or trade for in this split and the ones before it (PChal's Pokémon Locations sheet, Sacred Gold side: Storm Silver-only swarms are left out), as long as its lowest wild level there is at or under the cap. Surf counts from the Chuck split, the Old Rod from the start, the Good Rod from Olivine (Chuck split) and the Super Rod from Blackthorn (Clair split); Rock Smash spots from the Bugsy split; the Hoenn / Sinnoh radio sounds after the Radio Tower. Legendaries and the random Dragon's Den gift aren't counted. Each is evolved as far as it can go by the level cap (${cap} here: the next leader's ace). Evolution items count once they can be found; the Sprout Tower Elder's stone / orb (your choice of one) counts from the start.</p>
+      <p><b>Moves.</b> Level-up moves up to the cap (Lv 1 moves once the Blackthorn move reminder can be reached) and TMs from when you can pick them up: gym rewards after the gym, Goldenrod Dept. Store and the reduced Game Corner TMs (Ice Beam, Thunderbolt, Flamethrower) from Goldenrod, Kanto shops only for the Kanto fights. Lottery and Battle Frontier TMs and move tutors aren't counted; Frustration is left out on your side.</p>
+      <p><b>Type chart.</b> Sacred Gold has no Fairy type, and Steel still resists Ghost and Dark (Generation 4).</p>`,
+  ai: window.AI4(`<ul><li>Sacred Gold is gentler than Renegade Platinum here: of the documented trainers, <b>83 of 267</b> have the smart flags 1 + 2 (every gym leader, the Elite Four, Lance, the Rocket executives, the Ace Trainers and Kimono Girls among them; only the rival's late fights), about 130 use only flag 0 and pick moves at random among the ones that do something, and the rest have Basic + Expert or Basic + Evaluate only.</li>
+      <li>Pryce also has the Weather flag (Hail on turn 1).</li></ul>`),
+  repel: {
+    "Route 46": ["Lv 6 morning / day: Jigglypuff, Phanpy", "Lv 6 night: Houndour, Shinx"],
+    "Route 31": ["Lv 10 morning: Butterfree, Beedrill", "Lv 10 day: Exeggcute", "Lv 10 night: Beautifly, Dustox"],
+    "Dark Cave (Violet City Side)": ["Lv 9: Larvitar, Slugma, Dunsparce"],
+    "Route 32": ["Lv 12 morning / day: Magnemite, Pachirisu", "Lv 12 night: Magnemite, Drifloon"],
+    "Union Cave": ["B1F, Lv 16: Gible, Zubat, Onix, Bagon", "B1F, Lv 15: Gible, Zubat, Onix, Bagon, Aron"],
+    "Route 33": ["Lv 16: Rhyhorn (trade it for Gligar in Violet City)"],
+    "Slowpoke Well": ["1F, Lv 16: Shellder, Swinub, Gastly, Bronzor"],
+    "Route 34": ["Lv 19: Kadabra (it knows Teleport)"],
+    "Route 35": ["Lv 19 morning / day: Staravia, Pidgeotto", "Lv 19 night: Noctowl, Meowth", "Lv 18: only takes Ditto out"],
+    "National Park": ["Lv 19: Heracross, Kricketune, Pinsir, Scyther"],
+    "Route 36": ["Lv 19 morning / day: Staravia, Nidorino, Nidorina", "Lv 19 night: Noctowl, Nidorino, Nidorina"],
+    "Route 37": ["Lv 24: Stantler"],
+    "Route 38": ["Lv 27: Luxio, Miltank, Tauros, Farfetch'd"],
+    "Route 47": ["Lv 45 morning / day: Swellow", "Lv 45 night: Noctowl"],
+    "Cliff Cave": ["Lv 33: Steelix", "Lv 32: Steelix, Kingler, Quagsire"],
+    "Route 48": ["Lv 33: Absol, Tropius", "Lv 32: takes out Farfetch'd, Tangela, Diglett, Gloom and Weepinbell"],
+    "Mt. Mortar": ["1F, Lv 34: Graveler, Golbat", "1F (2nd room), Lv 37: Medicham", "1F (3rd room), Lv 45: Medicham, Hariyama", "B1F, Lv 35: Metang, Pupitar"],
+    "Route 43": ["Lv 36: Manectric, Linoone"],
+    "Ice Path": ["1F, Lv 40: Golbat · Lv 39: Golbat, Snover, Swinub", "B1F, Lv 41: Golbat · Lv 40: Golbat, Delibird", "B2F, Lv 43: Golbat · Lv 42: Golbat, Delibird, Jynx", "B3F, Lv 44: Golbat, Piloswine, Jynx, Sneasel"],
+    "Route 45": ["Lv 45: Skarmory", "Lv 44: takes out Graveler and Grumpig"],
+    "Tohjo Falls": ["Lv 45: Bronzong, Quagsire"]
+  }
+};
+</script>
+<script src="../shared/model.js?v=2"></script>
+<script src="../shared/savereader_hgss.js?v=1"></script>
+<script src="../shared/app.js?v=5"></script>
+</body>
+</html>

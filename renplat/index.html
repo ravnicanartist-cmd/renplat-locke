@@ -6,7 +6,7 @@
 <title>Renegade Platinum Nuzlocke + Boss Prep</title>
 <meta name="description" content="Nuzlocke tracker and boss prep for Pokémon Renegade Platinum (PChal QoL build), with a save reader that runs in your browser.">
 <meta name="theme-color" content="#1b2433">
-<link rel="stylesheet" href="../shared/style.css?v=4">
+<link rel="stylesheet" href="../shared/style.css?v=5">
 </head>
 <body>
 <header>
@@ -20,19 +20,22 @@
 </header>
 <main id="main"><p class="muted">Loading…</p></main>
 <a id="top" href="#" onclick="scrollTo(0,0);return false" title="Back to top">↑</a>
+<script src="../shared/ai4.js?v=1"></script>
 <script>
 window.GAME = {
-  id: "rp", store: "rp", gist: "renplat-locke.json", v: 3, save: "pt",
+  id: "rp", store: "rp", gist: "renplat-locke.json", v: 4, save: "pt",
   tabs: [["G", "Gyms & League"], ["V", "Villains"], ["R", "Rivals & required fights"], ["A", "Everything, in story order"]],
   starters: ["Turtwig", "Chimchar", "Piplup"],
   genders: [["M", "a boy (you face Dawn)"], ["F", "a girl (you face Lucas)"]],
   calc: "../calc/?data=26138cc1d500b0cf7334&gen=7&switchIn=4&types=6&dmgGen=4",
   badges: { roark: "Coal", gardenia: "Forest", fantina: "Relic", maylene: "Cobble", wake: "Fen", byron: "Mine", candice: "Icicle", volkner: "Beacon" },
   leaders: ["roark", "gardenia", "fantina", "maylene", "wake", "byron", "candice", "volkner", "cynthia"],
-  nav: [["#prep", "Boss Prep"], ["#trainers", "Trainers"], ["#run", "Nuzlocke"], ["#box", "Box"], ["#dex", "Pokédex"], ["#data", "Save &amp; sync"],
+  nav: [["#prep", "Boss Prep"], ["#trainers", "Trainers"], ["#run", "Nuzlocke"], ["#box", "Box"], ["#dex", "Pokédex"], ["#ai", "Enemy AI"], ["#data", "Save &amp; sync"],
         ["../calc/?data=26138cc1d500b0cf7334&gen=7&switchIn=4&types=6&dmgGen=4", "Calc ↗"], ["../#gauntlet", "Gauntlet"]],
   trainersNote: "Teams from PChal's Trainer Battles sheet, with levels, items and moves checked against the ROM.",
   dexIntro: "Renegade Platinum species data as it is in this ROM (Complete patch): types, base stats, abilities, evolutions and where to find each one.",
+  ai: window.AI4(`<ul><li>Renegade Platinum gives almost everyone the boss AI: <b>460 of the 469</b> trainers matched in the ROM have flags 0 + 1 + 2 (Basic, Evaluate Attack, Expert). Expect nearly every trainer to go for KOs and use status moves sensibly.</li>
+      <li>Only a handful of early or minor trainers (a Hiker, a Roughneck, a Jogger, some Galactic Grunts) are basic-only.</li></ul>`),
   how: cap => `
       <p><b>Your options.</b> Every species you can catch, be given, trade for or hatch in the areas you can reach before this fight, respecting when Surf, the fishing rods and honey trees become available. Each is evolved as far as it can go by the level cap (${cap} here: the documentation's cap for this part of the game, which is the next gym leader's ace). Level, friendship (instant in this build) and item evolutions count once the item can be found; Razor Fang has no location in the docs, so Gligar stays Gligar.</p>
       <p><b>Moves.</b> Level-up moves up to the cap (Lv 1 moves only once the Pastoria move reminder can be reached), TMs from when you can really pick them up (no Poké Mart sells TMs; gym TMs after the gym, Substitute removed), and every move tutor once Maylene is beaten (PChal's PC tutors).</p>`
@@ -40,6 +43,6 @@ window.GAME = {
 </script>
 <script src="../shared/model.js?v=2"></script>
 <script src="../shared/savereader_pt.js?v=2"></script>
-<script src="../shared/app.js?v=4"></script>
+<script src="../shared/app.js?v=5"></script>
 </body>
 </html>

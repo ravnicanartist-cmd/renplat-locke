@@ -182,7 +182,7 @@
   async function readFile(file) {
     const buf = await file.arrayBuffer();
     const prev = SAVE;
-    SAVE = (G.save === "b2w2" ? SaveReaderB2W2 : SaveReader).readSave(buf, IDS, META);
+    SAVE = ({ b2w2: window.SaveReaderB2W2, hgss: window.SaveReaderHGSS }[G.save] || window.SaveReader).readSave(buf, IDS, META);
     store.set("save", SAVE);
     S.gender = SAVE.gender; store.set("gender", S.gender);
     const st = SAVE.starter || STARTERS.find(s => SAVE.party.concat(SAVE.boxes).some(m => fam(m.name) === s));
@@ -200,7 +200,7 @@
     }));
     const starterFam = SAVE.starter ? fam(SAVE.starter) : null;
     SAVE.party.concat(SAVE.boxes).forEach(m => {
-      const f = fam(m.name), a = m.met;
+      const f = fam(m.name), a = (G.metAlias || {})[m.met] || m.met;
       if (!a || !META.areas.some(x => x.name === a)) return;
       if (f === starterFam) return;
       const wild = wildAt[a] && wildAt[a].has(f), gift = giftAt[a] && giftAt[a].has(f);
@@ -363,7 +363,11 @@
     areaGroups().forEach(g => {
       h += `<details class="grp" open><summary>${esc(g.title)}</summary>`;
       g.areas.forEach(a => {
-        const seen = new Set(), mons = a.mons.filter(m => { const k = m[0] + "|" + m[2]; return !seen.has(k) && seen.add(k); });
+        // one entry per species and method; times of day (morning / day / night) are merged into one label
+        const byKey = new Map();
+        a.mons.forEach(m => { const base = m[2].replace(/ \((morning|day|night)\)$/, ""), t = (/\((morning|day|night)\)$/.exec(m[2]) || [])[1], k = m[0] + "|" + base;
+          const e = byKey.get(k) || byKey.set(k, [m[0], m[1], base, m[3], m[4], new Set()]).get(k); if (t) e[5].add(t); });
+        const mons = [...byKey.values()].map(e => [e[0], e[1], e[5].size && e[5].size < 3 ? `${e[2]} (${[...e[5]].join(", ")})` : e[2], e[3], e[4]]);
         const r = NUZ.areas[a.name] || {}, wild = mons.filter(m => !["gift", "egg", "fossil", "trade", "static"].includes(m[2])), gifts = mons.filter(m => !wild.includes(m));
         const specs = [...new Set(wild.map(m => m[0]))];
         const opts = specs.map(s => `<option value="${esc(s)}" ${r.s === s ? "selected" : ""}>${esc(s)}${CURSED.has(fam(s)) && r.s !== s ? " (cursed)" : CAUGHT.has(fam(s)) && r.s !== s ? " (dupe)" : ""}</option>`).join("");
@@ -373,7 +377,8 @@
           ${wild.length ? `<select class="field" data-area="${esc(a.name)}"><option value="">— not yet —</option>${opts}<option value="!failed" ${r.st === "failed" ? "selected" : ""}>Failed (fainted / fled)</option><option value="!skip" ${r.st === "skip" ? "selected" : ""}>Skipped</option></select>` : '<span class="muted">Gifts only</span>'}
           ${r.st === "caught" ? `<button class="btn ${isDead ? "" : "red"}" data-dead="${esc(a.name)}">${isDead ? "Undo death" : "It died"}</button>` : ""}</div>
           <div class="enc">${wild.map(m => `<span class="${(CAUGHT.has(fam(m[0])) || CURSED.has(fam(m[0]))) && r.s !== m[0] ? "dupe" : ""}" title="${esc(m[1])}">${spr(m[0])}${esc(m[0])} <span class="muted">${esc(m[2])}</span></span>`).join("")}</div>
-          ${gifts.length ? `<div class="enc">${gifts.map(m => `<span title="${esc(m[1])}">${spr(m[0])}${esc(m[0])} <span class="muted">${esc(m[2])} · free</span></span>`).join("")}</div>` : ""}</div>`;
+          ${gifts.length ? `<div class="enc">${gifts.map(m => `<span title="${esc(m[1])}">${spr(m[0])}${esc(m[0])} <span class="muted">${esc(m[2])} · free</span></span>`).join("")}</div>` : ""}
+          ${(G.repel || {})[a.name] ? `<div class="repel"><b>Repel trick</b> (lead with this level and use a Repel): ${G.repel[a.name].map(esc).join("; ")}</div>` : ""}</div>`;
       });
       h += `</details>`;
     });

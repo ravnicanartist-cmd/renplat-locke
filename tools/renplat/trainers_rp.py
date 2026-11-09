@@ -1,6 +1,6 @@
 """Renegade Platinum Trainers page: PChal's Trainer_Battles.xlsx (teams, mandatory / optional / partner) -> renplat/data/trainers.json.
 Names are matched to the site's species and move names; calc links come from hzla's rp.js sets (species + moves + trainer name)."""
-import json, re, sys, collections
+import json, re, sys, collections, struct
 sys.path.insert(0, "/home/claude/rp2"); sys.path.insert(0, "/home/claude/build")
 from ex_rp_trainers import X
 import story as S
@@ -86,7 +86,8 @@ for sp in X.SPLITS:
         for mm in team:
             c = calc_id(mm, x["name"])
             if c: mm["calc"] = c
-        tr.append({"name": x["name"], "loc": x["loc"], "mand": x["mand"], "partner": x["fill"] == "FFB6D7A8", "notes": x["notes"], "team": team})
+        tr.append({"name": x["name"], "loc": x["loc"], "mand": x["mand"], "partner": x["fill"] == "FFB6D7A8", "notes": x["notes"], "team": team,
+                   "ai": struct.unpack_from("<I", B.TD[tid], 12)[0] if tid is not None else None})
     out.append({"split": key, "label": sp, "cap": S.CAPS[key], "trainers": tr})
 json.dump({"all": out}, open(f"{HUB}/renplat/data/trainers.json", "w"), ensure_ascii=False, separators=(",", ":"))
 n = sum(len(s["trainers"]) for s in out); nm = sum(len(t["team"]) for s in out for t in s["trainers"])

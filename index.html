@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nuzlocke hub</title>
-<meta name="description" content="Nuzlocke trackers, boss prep and save readers for Renegade Platinum and Blaze Black 2 Redux, plus a Drayano Gauntlet tracker.">
+<meta name="description" content="Nuzlocke trackers, boss prep and save readers for Sacred Gold, Renegade Platinum and Blaze Black 2 Redux, plus a Drayano Gauntlet tracker.">
 <meta name="theme-color" content="#1b2433">
-<link rel="stylesheet" href="shared/style.css?v=3">
+<link rel="stylesheet" href="shared/style.css?v=5">
 <script>
 // the old Renegade Platinum links (#prep, #run, ...) moved to renplat/
 if (/^#(prep|run|box|dex|data)/.test(location.hash)) location.replace("renplat/" + location.hash);
@@ -16,7 +16,7 @@ if (/^#(prep|run|box|dex|data)/.test(location.hash)) location.replace("renplat/"
 <header>
   <div class="bar">
     <a class="brand" href="#">Nuzlocke <span>hub</span></a>
-    <nav id="nav"><a href="#">Games</a><a href="#gauntlet">Gauntlet</a><a href="bb2r/#ai">Enemy AI (Gen 5)</a></nav>
+    <nav id="nav"><a href="#">Games</a><a href="#gauntlet">Gauntlet</a></nav>
   </div>
 </header>
 <main id="main"></main>
@@ -26,7 +26,7 @@ if (/^#(prep|run|box|dex|data)/.test(location.hash)) location.replace("renplat/"
   const $ = s => document.querySelector(s);
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const GAMES = [
-    { id: "sgss", store: "sgss", name: "Storm Silver", note: "Drayano's Sacred Gold / Storm Silver. No tracker yet: log its deaths and Hall of Fame team by hand on the Gauntlet page.", url: null },
+    { id: "sg", store: "sg", name: "Sacred Gold", note: "PChal QoL build (HeartGold base). Boss Prep incl. Kanto and Red, every trainer team by split, Nuzlocke areas with repel tricks, save reader, calc, enemy AI notes.", url: "sg/" },
     { id: "rp", store: "rp", name: "Renegade Platinum", note: "PChal QoL 1.9.2. Boss Prep, every trainer team by split, Nuzlocke areas, box, Pokédex, save reader, calc.", url: "renplat/" },
     { id: "bb2r", store: "bb2r", name: "Blaze Black 2 Redux", note: "PChal QoL build. Boss Prep, every trainer team by split, Normal / Challenge, Nuzlocke areas, save reader, calc, enemy AI notes.", url: "bb2r/" }
   ];
@@ -34,6 +34,9 @@ if (/^#(prep|run|box|dex|data)/.test(location.hash)) location.replace("renplat/"
   const put = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
   let G = get("hub.gauntlet", null) || { on: false, banDead: true, banHof: true, order: GAMES.map(g => ({ id: g.id, store: g.store })), manual: {} };
   G.manual = G.manual || {};
+  // the first slot used to be a placeholder for Storm Silver; the game being played is Sacred Gold
+  G.order = G.order.map(o => o.id === "sgss" ? { id: "sg", store: "sg" } : o);
+  if (G.manual.sgss && !G.manual.sg) G.manual.sg = G.manual.sgss;
   const save = () => { G.updated = Date.now(); put("hub.gauntlet", G); };
   const list = s => String(s || "").split(/[,\n]/).map(x => x.trim()).filter(Boolean);
 
@@ -58,7 +61,7 @@ if (/^#(prep|run|box|dex|data)/.test(location.hash)) location.replace("renplat/"
   }
 
   function gauntlet() {
-    let h = `<p class="intro">A Drayano Gauntlet: the games are played back to back, and a Pokémon family that died (or made your Hall of Fame team) in an earlier game is off limits in the later ones.
+    let h = `<p class="intro">A Drayano Gauntlet (Sacred Gold → Renegade Platinum → Blaze Black 2 Redux): the games are played back to back, and a Pokémon family that died (or made your Hall of Fame team) in an earlier game is off limits in the later ones.
       With this on, those families are marked <b>Cursed (gauntlet)</b> in the later games' Boss Prep, Nuzlocke areas and catch suggestions.</p>
       <div class="sum"><label class="chk"><input type="checkbox" id="gon" ${G.on ? "checked" : ""}> Gauntlet on</label><br>
       <label class="chk"><input type="checkbox" id="gdead" ${G.banDead !== false ? "checked" : ""}> Families that died are banned in later games</label><br>

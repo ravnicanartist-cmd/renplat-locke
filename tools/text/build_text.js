@@ -4,7 +4,7 @@
 const fs = require("fs"), path = require("path");
 const { Dex } = require("/home/claude/pkmn/node_modules/@pkmn/dex");
 const HUB = "/home/claude/hub";
-const GAMES = [["renplat", 4, "src_rp.json"], ["bb2r", 5, "src_bb2r.json"]];
+const GAMES = [["renplat", 4, "src_rp.json"], ["bb2r", 5, "src_bb2r.json"], ["sg", 4, "src_sg.json"]];
 const NAME = { "Compoundeyes": "Compound Eyes", "Lightningrod": "Lightning Rod" };
 for (const [g, gen, src] of GAMES) {
   const D = path.join(HUB, g, "data"), meta = JSON.parse(fs.readFileSync(path.join(D, "meta.json")));

@@ -1337,7 +1337,8 @@ $(document).ready(function() {
         }
 
         if (TITLE == "Sacred Gold/Storm Silver") {
-            location.href = "https://hzla.github.io/Dynamic-Calc-Decomps/?data=sgss"
+            // nuzlocke hub: keep Sacred Gold here (data in backups/sgss.js)
+            // location.href = "https://hzla.github.io/Dynamic-Calc-Decomps/?data=sgss"
         }
 
         if (TITLE == "Sterling Silver 1.17") {

@@ -200,3 +200,5 @@ a.game:hover { border-color: var(--accent); }
 #tip.below::after { bottom: auto; top: -8px; border: 8px solid transparent; border-top: 0; border-bottom-color: #7fb2c4; }
 .tm .sub { margin: 2px 0; }
 .mon .mvs { grid-column: 1 / -1; margin-top: 6px; }
+.repel { margin-top: 6px; font-size: 12.5px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 5px; }
+.repel b { color: var(--accent2); font-weight: 600; }
