@@ -7,6 +7,7 @@ Static pages for Drayano-hack Nuzlockes, one folder per game, sharing one tracke
 | `sg/` | Sacred Gold (PChal QoL build, HeartGold base) | Boss Prep (gyms, Rocket executives, Elite Four, Lance, Kanto leaders, Red), every trainer team by split, Nuzlocke areas with repel tricks, box, Pokédex, HeartGold save reader, Gen 4 enemy AI notes |
 | `renplat/` | Renegade Platinum (PChal QoL 1.9.2) | Boss Prep, every trainer team by split, Nuzlocke areas, box, Pokédex, Platinum save reader |
 | `bb2r/` | Blaze Black 2 Redux (PChal QoL build) | Boss Prep (gyms, Elite Four, champion, Team Plasma bosses), every trainer team by split, Normal / Challenge switch, Nuzlocke areas, box, Pokédex, B2W2 save reader, enemy AI notes |
+| `rupture/` | Emerald Rupture 2.9.1 (Carlos's own hack) | Docs with every trainer, Boss Prep, Nuzlocke tracker, damage calc (Normal / Hard / Rewind). Moved from the `rupture-calc` repo; its data still comes from the game repo's `tools/gen5/calc_export.py` and `site_export.py`, which should now write into this folder. |
 | `index.html` | Hub | Game list and the Drayano Gauntlet (Sacred Gold → Renegade Platinum → Blaze Black 2 Redux): families that died or made the Hall of Fame in an earlier game are marked "Cursed" in later ones |
 
 Everything runs in the browser. Open the repo through any static server or GitHub Pages. The old Renegade Platinum links (`/#prep`, `/#run`, …) redirect to `renplat/`.

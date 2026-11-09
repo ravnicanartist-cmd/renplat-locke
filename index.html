@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nuzlocke hub</title>
-<meta name="description" content="Nuzlocke trackers, boss prep and save readers for Sacred Gold, Renegade Platinum and Blaze Black 2 Redux, plus a Drayano Gauntlet tracker.">
+<meta name="description" content="Nuzlocke trackers, boss prep and save readers for Sacred Gold, Renegade Platinum, Blaze Black 2 Redux and Emerald Rupture, plus a Drayano Gauntlet tracker.">
 <meta name="theme-color" content="#1b2433">
 <link rel="stylesheet" href="shared/style.css?v=5">
 <script>
@@ -25,6 +25,10 @@ if (/^#(prep|run|box|dex|data)/.test(location.hash)) location.replace("renplat/"
   "use strict";
   const $ = s => document.querySelector(s);
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  // Emerald Rupture isn't part of the gauntlet: it has its own docs, calc and tracker (rupture/)
+  const OTHER = [{ name: "Emerald Rupture", note: "Your Gen 5 Emerald hack (2.9.1): docs with every trainer, Boss Prep, Nuzlocke tracker, damage calc (Normal, Hard, Rewind).",
+    links: [["rupture/docs/#prep", "Boss Prep"], ["rupture/docs/", "Docs"], ["rupture/nuzlocke/", "Nuzlocke tracker"], ["rupture/normal.html", "Calc"], ["rupture/hard.html", "Calc (Hard)"],
+            ["rupture/rewind.html", "Calc (Rewind)"], ["rupture/rewind-hard.html", "Calc (Rewind Hard)"]] }];
   const GAMES = [
     { id: "sg", store: "sg", name: "Sacred Gold", note: "PChal QoL build (HeartGold base). Boss Prep incl. Kanto and Red, every trainer team by split, Nuzlocke areas with repel tricks, save reader, calc, enemy AI notes.", url: "sg/" },
     { id: "rp", store: "rp", name: "Renegade Platinum", note: "PChal QoL 1.9.2. Boss Prep, every trainer team by split, Nuzlocke areas, box, Pokédex, save reader, calc.", url: "renplat/" },
@@ -56,7 +60,7 @@ if (/^#(prep|run|box|dex|data)/.test(location.hash)) location.replace("renplat/"
       <div class="games">${GAMES.map(g => { const t = fromTracker(g);
         const stat = t ? `<br><span class="muted">${t.alive.length} alive · ${t.dead.length} dead${t.badges != null ? ` · ${t.badges} badges in your last save` : ""}</span>` : "";
         return g.url ? `<a class="game" href="${g.url}"><b>${esc(g.name)}</b><br><span class="muted">${esc(g.note)}</span>${stat}</a>`
-                     : `<div class="game soon"><b>${esc(g.name)}</b><br><span class="muted">${esc(g.note)}</span></div>`; }).join("")}</div>
+                     : `<div class="game soon"><b>${esc(g.name)}</b><br><span class="muted">${esc(g.note)}</span></div>`; }).join("")}${OTHER.map(o => `<div class="game"><b>${esc(o.name)}</b><br><span class="muted">${esc(o.note)}</span><br>${o.links.map(([h, t]) => `<a href="${h}">${t}</a>`).join(" · ")}</div>`).join("")}</div>
       <h3 class="sec">Drayano Gauntlet</h3><p class="muted">${G.on ? `On: ${G.order.map(o => esc(GAMES.find(g => g.id === o.id).name)).join(" → ")}.` : "Off."} <a href="#gauntlet">Set it up</a>.</p>`;
   }
 
