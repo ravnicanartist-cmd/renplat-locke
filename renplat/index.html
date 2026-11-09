@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Renegade Platinum Nuzlocke + Boss Prep</title>
+<meta name="description" content="Nuzlocke tracker and boss prep for Pokémon Renegade Platinum (PChal QoL build), with a save reader that runs in your browser.">
+<meta name="theme-color" content="#1b2433">
+<link rel="stylesheet" href="../shared/style.css?v=3">
+</head>
+<body>
+<header>
+  <div class="bar">
+    <a class="brand" href="../">Renegade Platinum <span>Nuzlocke</span></a>
+    <nav id="nav"></nav>
+  </div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search this page" autocomplete="off">
+  </div>
+</header>
+<main id="main"><p class="muted">Loading…</p></main>
+<a id="top" href="#" onclick="scrollTo(0,0);return false" title="Back to top">↑</a>
+<script>
+window.GAME = {
+  id: "rp", store: "rp", gist: "renplat-locke.json", v: 2, save: "pt",
+  tabs: [["G", "Gyms & League"], ["V", "Villains"], ["R", "Rivals & required fights"], ["A", "Everything, in story order"]],
+  starters: ["Turtwig", "Chimchar", "Piplup"],
+  genders: [["M", "a boy (you face Dawn)"], ["F", "a girl (you face Lucas)"]],
+  calc: "../calc/?data=26138cc1d500b0cf7334&gen=7&switchIn=4&types=6&dmgGen=4",
+  badges: { roark: "Coal", gardenia: "Forest", fantina: "Relic", maylene: "Cobble", wake: "Fen", byron: "Mine", candice: "Icicle", volkner: "Beacon" },
+  leaders: ["roark", "gardenia", "fantina", "maylene", "wake", "byron", "candice", "volkner", "cynthia"],
+  nav: [["#prep", "Boss Prep"], ["#run", "Nuzlocke"], ["#box", "Box"], ["#dex", "Pokédex"], ["#data", "Save &amp; sync"],
+        ["../calc/?data=26138cc1d500b0cf7334&gen=7&switchIn=4&types=6&dmgGen=4", "Calc ↗"], ["../#gauntlet", "Gauntlet"]],
+  dexIntro: "Renegade Platinum species data as it is in this ROM (Complete patch): types, base stats, abilities, evolutions and where to find each one.",
+  how: cap => `
+      <p><b>Your options.</b> Every species you can catch, be given, trade for or hatch in the areas you can reach before this fight, respecting when Surf, the fishing rods and honey trees become available. Each is evolved as far as it can go by the level cap (${cap} here: the documentation's cap for this part of the game, which is the next gym leader's ace). Level, friendship (instant in this build) and item evolutions count once the item can be found; Razor Fang has no location in the docs, so Gligar stays Gligar.</p>
+      <p><b>Moves.</b> Level-up moves up to the cap (Lv 1 moves only once the Pastoria move reminder can be reached), TMs from when you can really pick them up (no Poké Mart sells TMs; gym TMs after the gym, Substitute removed), and every move tutor once Maylene is beaten (PChal's PC tutors).</p>`
+};
+</script>
+<script src="../shared/model.js?v=2"></script>
+<script src="../shared/savereader_pt.js?v=2"></script>
+<script src="../shared/app.js?v=3"></script>
+</body>
+</html>

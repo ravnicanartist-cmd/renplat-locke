@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blaze Black 2 Redux Nuzlocke + Boss Prep</title>
+<meta name="description" content="Nuzlocke tracker, boss prep and every trainer team for Pokémon Blaze Black 2 Redux (PChal QoL build), with a save reader that runs in your browser.">
+<meta name="theme-color" content="#1b2433">
+<link rel="stylesheet" href="../shared/style.css?v=3">
+</head>
+<body>
+<header>
+  <div class="bar">
+    <a class="brand" href="../">Blaze Black 2 Redux <span>Nuzlocke</span></a>
+    <nav id="nav"></nav>
+  </div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search this page" autocomplete="off">
+  </div>
+</header>
+<main id="main"><p class="muted">Loading…</p></main>
+<a id="top" href="#" onclick="scrollTo(0,0);return false" title="Back to top">↑</a>
+<script>
+window.GAME = {
+  id: "bb2r", store: "bb2r", gist: "bb2r-locke.json", v: 1, save: "b2w2",
+  modes: ["challenge", "normal"],
+  tabs: [["G", "Gyms & League"], ["V", "Team Plasma bosses"], ["A", "Everything, in story order"]],
+  starters: ["Snivy", "Tepig", "Oshawott"],
+  calc: "../calc/?data=945a33720dbd6bc04488&gen=8&types=6",
+  badges: { cheren: "Basic", roxie: "Toxic", burgh: "Insect", elesa: "Bolt", clay: "Quake", skyla: "Jet", drayden: "Legend", marlon: "Wave" },
+  leaders: ["cheren", "roxie", "burgh", "elesa", "clay", "skyla", "drayden", "marlon", "ghetsis", "iris"],
+  nav: [["#prep", "Boss Prep"], ["#trainers", "Trainers"], ["#run", "Nuzlocke"], ["#box", "Box"], ["#dex", "Pokédex"], ["#ai", "Enemy AI"],
+        ["#data", "Save &amp; sync"], ["../calc/?data=945a33720dbd6bc04488&gen=8&types=6", "Calc ↗"], ["../#gauntlet", "Gauntlet"]],
+  dexIntro: "Blaze Black 2 Redux species data (PChal QoL build, from hzla's calc data for this version): types, base stats, abilities, evolutions and where to find each one.",
+  how: cap => `
+      <p><b>Your options.</b> Every species you can catch, be given or trade for in this split and the ones before it (PChal's Pokémon Locations sheet), as long as its lowest wild level there is at or under the cap, so an area you come back to later doesn't count early. Surf counts from the Skyla split, the Super Rod from the start. Each is evolved as far as it can go by the level cap (${cap} here: the next leader's ace in this mode). Level, friendship and item evolutions count once the item can be found (Important Item Locations sheet).</p>
+      <p><b>Moves.</b> Level-up moves up to the cap (Lv 1 moves once the Mistralton move reminder can be reached) and TMs from where you pick them up. Move tutors aren't counted. Frustration is left out on your side: it's friendship-based again in this build, so it's weak on a Pokémon that likes you.</p>`,
+  ai: `<div class="ainote">
+    <p class="intro">A short summary of DaSquyd's guide "Enemy AI in Gen V Pokémon" (the PDF), with what it means for Blaze Black 2 Redux. The AI flags for this hack come from hzla's calc data; each trainer's flag set is shown as a tag on the Trainers page.</p>
+    <h3 class="sec">The one thing to know for this hack</h3>
+    <ul><li>In the original games most trainers only have flag 0, so they pick moves at random as long as the move does something. In Blaze Black 2 Redux about <b>8 in 10 trainers</b> (343 of 424 in Normal, 346 of 427 in Challenge) also have <b>flags 1 and 2</b> ("Evaluate" and "Expert"), the boss AI. Expect almost everyone to go for kills.</li>
+      <li>About 47 trainers are still "basic" (flag 0 only), mostly early-route Youngsters, Lasses, Preschoolers and Fishermen. They're tagged <i>Basic AI</i>.</li></ul>
+    <h3 class="sec">How a smart trainer picks a move (flags 1 + 2)</h3>
+    <ul><li>Every move starts at a score of 100; the highest score is used, and ties are broken at random.</li>
+      <li><b>It goes for the KO.</b> A move that KOs you gets +4, or +6 for priority moves (Aqua Jet, Bullet Punch, Extreme Speed, Ice Shard, Mach Punch, Quick Attack, Shadow Sneak, Vacuum Wave). Explosion and Self-Destruct don't get the bonus.</li>
+      <li><b>It checks KOs with its lowest damage roll</b> (85%) and no crit. If the lowest roll doesn't KO you, it doesn't "see" the KO.</li>
+      <li>If nothing KOs, its strongest damaging move is kept and every other damaging move gets −1, so it mostly uses its best hit.</li>
+      <li>Its damage check uses each move's listed power: variable moves look weak or like 0 power (Pin Missile is seen as 14 even with Skill Link, Frost Breath as 40 with no crit), and Weather Ball and Judgment are treated as Normal. Abilities, items, burn and gems do count.</li>
+      <li><b>Status-move bug:</b> a status move whose type would be 4× effective on you often gets +2 (for example Charge into a Ducklett), so it may waste turns.</li></ul>
+    <h3 class="sec">Your ability: the slot bug</h3>
+    <ul><li>Before your ability is revealed, the AI guesses it at random from the species' possible abilities (hidden ability included). Shadow Tag, Arena Trap and Magnet Pull it always knows.</li>
+      <li>Once an ability is revealed, the AI remembers it for that <b>field slot</b>, not that Pokémon, until something in that slot reveals a different ability or faints. Reveal Volt Absorb, switch to a Water type, and it still won't use Electric moves on that slot. Easy to abuse.</li>
+      <li>Flag 0 (every trainer) misses Storm Drain (it keeps using Water moves into it) and lets Hyper Voice into Soundproof.</li></ul>
+    <h3 class="sec">When it switches out</h3>
+    <ul><li>Always on the last turn of Perish Song.</li>
+      <li>If none of its moves can hit you because of type (and it has at least two damaging moves): 2/3 chance if a teammate has a super-effective move, otherwise 1/2 if a teammate has a neutral one. Abilities like Flash Fire are ignored here.</li>
+      <li>A Choice-locked Pokémon stuck on a move that can't hit you (or on a status move, 1/2) may switch the same way.</li>
+      <li>If you hit it with a type a teammate's ability absorbs (Water Absorb, Storm Drain, Dry Skin, Volt Absorb, Motor Drive, Lightning Rod, Flash Fire; Overgrow by mistake for Grass), there's a 1/2 chance per such teammate, unless it has a super-effective move (then 2/3 it ignores this). Levitate isn't checked.</li>
+      <li>If it was hit last turn and has no super-effective move (or a 1 in 10 chance even if it does), it may switch to a teammate that resists or is immune to the type that hit it and has a super-effective move on you (1/3 resist, 1/2 immune).</li></ul>
+    <h3 class="sec">Who it sends in next</h3>
+    <ul><li>After a faint, U-turn or Volt Switch it sends in the Pokémon with the <b>strongest single move against you by type only</b>: base power × type effectiveness, ignoring abilities, items and STAB. Moves under 10 power (Low Kick, Gyro Ball…) count as 60.</li>
+      <li>Ties go to party order. So you can often predict the next Pokémon from your current one's typing.</li></ul>
+    <h3 class="sec">Items, doubles and the rest</h3>
+    <ul><li>Trainers carry up to 4 items. A healing item is used at 25% HP or less, an X item if the stat can still go up, a status cure if it has that status.</li>
+      <li>Doubles (flag 7) avoid hitting their partner, or hit it on purpose to trigger an ability like Water Absorb. With moves tied on both of your Pokémon it picks a target at random, so the only sure way to draw an attack is to be the one it can KO.</li>
+      <li>Hugh's first battle (flag 4) mostly throws: it uses Tackle less the lower your HP is.</li></ul>
+  </div>`
+};
+</script>
+<script src="../shared/model.js?v=2"></script>
+<script src="../shared/savereader_b2w2.js?v=1"></script>
+<script src="../shared/app.js?v=3"></script>
+</body>
+</html>

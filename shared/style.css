@@ -149,3 +149,34 @@ html, body { overflow-x: hidden; }
 tr.det td > .cols { position: sticky; left: 0; max-width: calc(100vw - 48px); }
 a.calc { display: inline-block; margin-top: 6px; font-size: 12px; color: var(--accent2); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; text-decoration: none; }
 .ml a.calc { margin: 0 0 0 4px; }
+/* hub additions: difficulty switch, trainers page, AI notes, hub home */
+.modes { display: inline-flex; gap: 4px; align-items: center; }
+.modes button { background: var(--bg); color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; font: inherit; cursor: pointer; }
+.modes button.on { background: var(--accent2); color: var(--bg); border-color: var(--accent2); font-weight: 600; }
+.ttabs button .muted { font-size: 11px; }
+.ttabs button.on .muted { color: var(--bg); }
+h3.tloc { margin-top: 18px; }
+.trainer { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 8px; margin: 0 0 10px; overflow: hidden; }
+.trainer.mand { border-left-color: #c0504d; }
+.trainer.partner { border-left-color: #6b4f9e; opacity: .85; }
+.trainer .th { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; padding: 7px 12px; background: var(--panel2); }
+.trainer .th b { font-size: 15px; }
+.tteam { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.tm { display: grid; grid-template-columns: 40px 1fr; gap: 0 8px; padding: 7px 10px; border-top: 1px solid var(--line); border-right: 1px solid var(--line); font-size: 13px; }
+.tm img { width: 40px; height: 40px; image-rendering: pixelated; }
+.tm .mv { margin-top: 2px; }
+.tm .calc { font-size: 12px; }
+a.tag { color: var(--text); }
+.tag.ai { background: #7a5a1f; }
+.ainote { max-width: 900px; }
+.ainote h3.sec { margin-top: 20px; }
+.ainote li { margin: 3px 0; }
+.games { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.game { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: block; color: var(--text); }
+a.game:hover { border-color: var(--accent); }
+.game.soon { opacity: .6; }
+.game b { font-size: 16px; }
+.gstep { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 0 0 8px; }
+.gstep .num { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--bg); display: grid; place-items: center; font-weight: 700; }
+.chiplist span { display: inline-block; margin: 2px 4px 2px 0; padding: 2px 7px; border-radius: 10px; background: var(--panel2); font-size: 12px; }
+@media (max-width: 600px) { .tteam { grid-template-columns: 1fr 1fr; } .tm { grid-template-columns: 1fr; } .tm img { display: none; } }

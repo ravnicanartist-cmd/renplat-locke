@@ -1,4 +1,4 @@
-// Renegade Platinum Boss Prep: index.html?...&opp=<set id> opens the calc with that trainer Pokemon on the right.
+// Nuzlocke hub Boss Prep / Trainers: index.html?...&opp=<set id> opens the calc with that trainer Pokemon on the right.
 // Boss Prep adds &me=<species>&lv=<level>&mv=<move>,<move>... to put your Pokemon on the left (blank set, IVs 15, Hardy).
 (function () {
     var opp = new URLSearchParams(location.search).get('opp');
@@ -12,8 +12,14 @@
         var sp = opp.split(' (')[0];
         if (!setdex[sp]) return;
         clearInterval(t);
-        setTimeout(function () { setOpposing(opp); setMine(); }, 400);
+        setTimeout(function () { setOpposing(opp); setLevel(); setMine(); }, 400);
     }, 100);
+    // &olv= sets the trainer Pokemon's level (Blaze Black 2 Redux Challenge Mode levels differ from the calc's Normal Mode sets)
+    function setLevel() {
+        var olv = new URLSearchParams(location.search).get('olv');
+        if (!olv) return;
+        setTimeout(function () { var p2 = $('#p2'); if (p2.find('.level').val() != olv) p2.find('.level').val(olv).change(); }, 300);
+    }
     function setMine() {
         var q = new URLSearchParams(location.search), me = q.get('me');
         if (!me || !setdex[me]) return;

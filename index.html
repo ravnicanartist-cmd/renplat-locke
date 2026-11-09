@@ -3,32 +3,100 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Renegade Platinum Nuzlocke + Boss Prep</title>
-<meta name="description" content="Nuzlocke tracker and boss prep for Pokémon Renegade Platinum (PChal QoL build), with a save reader that runs in your browser.">
+<title>Nuzlocke hub</title>
+<meta name="description" content="Nuzlocke trackers, boss prep and save readers for Renegade Platinum and Blaze Black 2 Redux, plus a Drayano Gauntlet tracker.">
 <meta name="theme-color" content="#1b2433">
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="stylesheet" href="shared/style.css?v=3">
+<script>
+// the old Renegade Platinum links (#prep, #run, ...) moved to renplat/
+if (/^#(prep|run|box|dex|data)/.test(location.hash)) location.replace("renplat/" + location.hash);
+</script>
 </head>
 <body>
 <header>
   <div class="bar">
-    <a class="brand" href="#prep">Renegade Platinum <span>Nuzlocke</span></a>
-    <nav id="nav">
-      <a href="#prep">Boss Prep</a>
-      <a href="#run">Nuzlocke</a>
-      <a href="#box">Box</a>
-      <a href="#dex">Pokédex</a>
-      <a href="#data">Save &amp; sync</a>
-      <a href="calc/" target="_blank" rel="noopener">Calc ↗</a>
-    </nav>
-  </div>
-  <div class="tools">
-    <input id="q" type="search" placeholder="Search this page" autocomplete="off">
+    <a class="brand" href="#">Nuzlocke <span>hub</span></a>
+    <nav id="nav"><a href="#">Games</a><a href="#gauntlet">Gauntlet</a><a href="bb2r/#ai">Enemy AI (Gen 5)</a></nav>
   </div>
 </header>
-<main id="main"><p class="muted">Loading…</p></main>
-<a id="top" href="#" onclick="scrollTo(0,0);return false" title="Back to top">↑</a>
-<script src="js/model.js?v=1"></script>
-<script src="js/savereader_pt.js?v=1"></script>
-<script src="app.js?v=2"></script>
+<main id="main"></main>
+<script>
+(() => {
+  "use strict";
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const GAMES = [
+    { id: "sgss", store: "sgss", name: "Storm Silver", note: "Drayano's Sacred Gold / Storm Silver. No tracker yet: log its deaths and Hall of Fame team by hand on the Gauntlet page.", url: null },
+    { id: "rp", store: "rp", name: "Renegade Platinum", note: "PChal QoL 1.9.2. Boss Prep, Nuzlocke areas, box, Pokédex, save reader, calc.", url: "renplat/" },
+    { id: "bb2r", store: "bb2r", name: "Blaze Black 2 Redux", note: "PChal QoL build. Boss Prep, every trainer team by split, Normal / Challenge, Nuzlocke areas, save reader, calc, enemy AI notes.", url: "bb2r/" }
+  ];
+  const get = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
+  const put = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  let G = get("hub.gauntlet", null) || { on: false, banDead: true, banHof: true, order: GAMES.map(g => ({ id: g.id, store: g.store })), manual: {} };
+  G.manual = G.manual || {};
+  const save = () => { G.updated = Date.now(); put("hub.gauntlet", G); };
+  const list = s => String(s || "").split(/[,\n]/).map(x => x.trim()).filter(Boolean);
+
+  // what each game's tracker knows: caught, alive, dead
+  function fromTracker(g) {
+    const nz = get(g.store + ".nuz", null);
+    if (!nz) return null;
+    const dead = [], alive = [];
+    Object.entries(nz.areas || {}).forEach(([a, r]) => { if (r.st === "caught" && r.s) ((nz.dead || {})[a] ? dead : alive).push(`${r.s} (${a})`); });
+    (nz.extra || []).forEach(x => (x.dead ? dead : alive).push(`${x.s} (${x.where || "extra"})`));
+    const sv = get(g.store + ".save", null);
+    return { dead, alive, badges: sv ? sv.badges.length : null };
+  }
+
+  function games() {
+    return `<p class="intro">One place for every run. Each game keeps its own tracker; your GitHub token and private gist are shared between them, so set sync up once on any game's "Save &amp; sync" page.</p>
+      <div class="games">${GAMES.map(g => { const t = fromTracker(g);
+        const stat = t ? `<br><span class="muted">${t.alive.length} alive · ${t.dead.length} dead${t.badges != null ? ` · ${t.badges} badges in your last save` : ""}</span>` : "";
+        return g.url ? `<a class="game" href="${g.url}"><b>${esc(g.name)}</b><br><span class="muted">${esc(g.note)}</span>${stat}</a>`
+                     : `<div class="game soon"><b>${esc(g.name)}</b><br><span class="muted">${esc(g.note)}</span></div>`; }).join("")}</div>
+      <h3 class="sec">Drayano Gauntlet</h3><p class="muted">${G.on ? `On: ${G.order.map(o => esc(GAMES.find(g => g.id === o.id).name)).join(" → ")}.` : "Off."} <a href="#gauntlet">Set it up</a>.</p>`;
+  }
+
+  function gauntlet() {
+    let h = `<p class="intro">A Drayano Gauntlet: the games are played back to back, and a Pokémon family that died (or made your Hall of Fame team) in an earlier game is off limits in the later ones.
+      With this on, those families are marked <b>Cursed (gauntlet)</b> in the later games' Boss Prep, Nuzlocke areas and catch suggestions.</p>
+      <div class="sum"><label class="chk"><input type="checkbox" id="gon" ${G.on ? "checked" : ""}> Gauntlet on</label><br>
+      <label class="chk"><input type="checkbox" id="gdead" ${G.banDead !== false ? "checked" : ""}> Families that died are banned in later games</label><br>
+      <label class="chk"><input type="checkbox" id="ghof" ${G.banHof !== false ? "checked" : ""}> Families on your Hall of Fame team are banned in later games</label></div>`;
+    G.order.forEach((o, i) => {
+      const g = GAMES.find(x => x.id === o.id), t = fromTracker(g), m = G.manual[g.id] || {};
+      h += `<div class="gstep"><span class="num">${i + 1}</span><b>${esc(g.name)}</b>${g.url ? ` <a href="${g.url}">open</a>` : ""}
+        <span style="margin-left:auto">${i > 0 ? `<button class="btn" data-up="${i}">↑</button>` : ""}${i < G.order.length - 1 ? `<button class="btn" data-down="${i}">↓</button>` : ""}</span></div>
+        <div class="sum" style="margin:-4px 0 14px">
+        ${t ? `<p><b>Dead (from the tracker)</b><br>${t.dead.length ? `<span class="chiplist">${t.dead.map(x => `<span>${esc(x)}</span>`).join("")}</span>` : '<span class="muted">Nobody yet.</span>'}</p>` : ""}
+        <p><b>${t ? "Other deaths" : "Deaths"}</b> <span class="muted">(species, separated by commas)</span><br><textarea class="field" rows="2" style="width:100%" data-dead="${g.id}">${esc((m.dead || []).join(", "))}</textarea></p>
+        <p><b>Hall of Fame team</b> <span class="muted">(species, separated by commas)</span><br><textarea class="field" rows="2" style="width:100%" data-hof="${g.id}">${esc((m.hof || []).join(", "))}</textarea></p></div>`;
+    });
+    h += `<p class="muted">Families are matched through each game's evolution data, so writing "Charizard" also bans Charmander and Charmeleon. This page lives on this device; it travels with the game pages' gist sync.</p>`;
+    return h;
+  }
+
+  function show() {
+    const page = location.hash.slice(1);
+    $("#main").innerHTML = page === "gauntlet" ? gauntlet() : games();
+    document.querySelectorAll("#nav a").forEach(a => a.classList.toggle("on", a.getAttribute("href") === (page ? "#" + page : "#")));
+  }
+  document.addEventListener("change", ev => {
+    const t = ev.target;
+    if (t.id === "gon") { G.on = t.checked; save(); show(); }
+    if (t.id === "gdead") { G.banDead = t.checked; save(); }
+    if (t.id === "ghof") { G.banHof = t.checked; save(); }
+    if (t.dataset.dead) { (G.manual[t.dataset.dead] = G.manual[t.dataset.dead] || {}).dead = list(t.value); save(); }
+    if (t.dataset.hof) { (G.manual[t.dataset.hof] = G.manual[t.dataset.hof] || {}).hof = list(t.value); save(); }
+  });
+  document.addEventListener("click", ev => {
+    const t = ev.target, sw = (a, b) => { [G.order[a], G.order[b]] = [G.order[b], G.order[a]]; save(); show(); };
+    if (t.dataset.up) sw(+t.dataset.up, +t.dataset.up - 1);
+    if (t.dataset.down) sw(+t.dataset.down, +t.dataset.down + 1);
+  });
+  addEventListener("hashchange", show);
+  show();
+})();
+</script>
 </body>
 </html>
