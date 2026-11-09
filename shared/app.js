@@ -10,7 +10,7 @@
     set(k, v) { try { localStorage.setItem(G.store + "." + k, JSON.stringify(v)); } catch (e) { /* storage full or blocked */ }
       if (!LOCAL.has(k)) { try { localStorage.setItem(G.store + ".updated", JSON.stringify(Date.now())); } catch (e) {} Sync.later(); } }
   };
-  let META, IDS, M;
+  let META, IDS, M, TXT = { ab: {}, mv: {} };
   const cache = {};
   const load = p => cache[p] || (cache[p] = fetch("data/" + p + "?v=" + (G.v || 1)).then(r => { if (!r.ok) throw new Error(p); return r.json(); }));
 
@@ -48,6 +48,42 @@
   const CALC = G.calc + (G.modes && S.mode === "challenge" ? "&challengeMode=true" : "");
   const calcName = n => String(n).replace(/'/g, "\u2019");
   const calcLink = (opp, me, lv, mv, txt, olv) => opp ? `<a class="calc" target="_blank" rel="noopener" href="${CALC}&opp=${encodeURIComponent(opp)}${olv ? "&olv=" + olv : ""}${me ? `&me=${encodeURIComponent(calcName(me))}&lv=${lv}&mv=${encodeURIComponent(mv.join(","))}` : ""}">${txt || "Calc"}</a>` : "";
+  // moves and abilities: type / category / power at a glance, the rest in a tooltip (hover, or tap on a phone)
+  const TA = { Normal: "NOR", Fire: "FIR", Water: "WAT", Electric: "ELE", Grass: "GRA", Ice: "ICE", Fighting: "FIG", Poison: "POI", Ground: "GRO",
+    Flying: "FLY", Psychic: "PSY", Bug: "BUG", Rock: "ROC", Ghost: "GHO", Dragon: "DRA", Dark: "DAR", Steel: "STE", Fairy: "FAI" };
+  const CATS = { Physical: ["ph", "Physical"], Special: ["sp", "Special"], Status: ["st", "Status"] };
+  function mv(n) {
+    const d = META.moves[n];
+    if (!d) return `<span class="mvx">${esc(n)}</span>`;
+    const [t, c, bp] = d, cat = CATS[c] || ["st", c];
+    return `<span class="mvx" data-tip="m:${esc(n)}"><i class="ty" style="background:${TC[t] || "#555"}">${TA[t] || esc(t)}</i>${esc(n)}${bp > 1 ? `<i class="bp">${bp}</i>` : ""}<i class="cat ${cat[0]}" title="${cat[1]}"></i></span>`;
+  }
+  const mvs = l => `<div class="mvs">${l.map(mv).join("")}</div>`;
+  const ab = n => n ? `<span class="abx" data-tip="a:${esc(n)}">${esc(n)}</span>` : "";
+  function tipHtml(k) {
+    const kind = k[0], n = k.slice(2);
+    if (kind === "a") return `<b>${esc(n)}</b><br>${esc(TXT.ab[n] || "No description found.")}`;
+    const d = META.moves[n] || [], x = TXT.mv[n] || [];
+    const [t, c, bp] = d;
+    return `<b>${esc(n)}</b> ${type(t)} <span class="muted">${esc(c)}</span><br>Power ${bp > 1 ? bp : "—"} · Accuracy ${x[0] === "—" || x[0] == null ? "—" : x[0] + "%"}${x[1] ? " · " + x[1] + " PP" : ""}
+      ${x[2] ? `<br>${esc(x[2])}` : ""}${x[3] ? `<br><span class="chg">Changed in this hack: ${esc(x[3])}</span>` : ""}`;
+  }
+  const tip = document.createElement("div"); tip.id = "tip"; document.body.appendChild(tip);
+  let tipFor = null;
+  function showTip(el) {
+    tipFor = el; tip.innerHTML = tipHtml(el.dataset.tip); tip.style.display = "block";
+    const r = el.getBoundingClientRect(), w = Math.min(340, innerWidth - 16);
+    tip.style.maxWidth = w + "px";
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let x = Math.max(8, Math.min(innerWidth - tw - 8, r.left + r.width / 2 - tw / 2)), y = r.top - th - 10, below = y < 8;
+    if (below) y = r.bottom + 10;
+    tip.style.left = x + scrollX + "px"; tip.style.top = y + scrollY + "px";
+    tip.classList.toggle("below", below); tip.style.setProperty("--ax", (r.left + r.width / 2 - x) + "px");
+  }
+  const hideTip = () => { tip.style.display = "none"; tipFor = null; };
+  document.addEventListener("mouseover", ev => { const el = ev.target.closest && ev.target.closest("[data-tip]"); if (el && matchMedia("(hover: hover)").matches) showTip(el); });
+  document.addEventListener("mouseout", ev => { const el = ev.target.closest && ev.target.closest("[data-tip]"); if (el && matchMedia("(hover: hover)").matches && !el.contains(ev.relatedTarget)) hideTip(); });
+  addEventListener("scroll", () => { if (tipFor && !matchMedia("(hover: hover)").matches) hideTip(); }, { passive: true });
   const F = k => META.fights[fightIdx(k)];
   const tabsOf = k => META.fights[fightIdx(k)] && Object.keys(META.tabs).filter(t => META.tabs[t].includes(k));
 
@@ -182,8 +218,8 @@
     const d = META.mons[m.s];
     return `<div class="mon">${spr(m.s)}<div class="nm">${esc(m.s)} <span class="muted">Lv ${m.l}</span></div>
       <div class="sub">${d ? d.t.map(type).join("") : ""}</div>
-      <div class="sub">${esc(m.a)} · ${esc(m.n)}${m.i ? " · @ " + esc(m.i) : ""} · IVs ${m.iv}</div>
-      <ul>${m.m.map(x => `<li>${esc(x)}</li>`).join("")}</ul>${extra || ""}${calcLink(m.calc, null, 0, [], "Open in the calc", m.l)}</div>`;
+      <div class="sub">${ab(m.a)} · ${esc(m.n)}${m.i ? " · @ " + esc(m.i) : ""} · IVs ${m.iv}</div>
+      ${mvs(m.m)}${extra || ""}${calcLink(m.calc, null, 0, [], "Open in the calc", m.l)}</div>`;
   }
   const cellHtml = c => `<td class="mu ${c[0] ? "w" : "l"}"><a>${c[0] ? "✓" : "✗"}</a><span>${esc(c[1] || "—")} ${c[1] ? c[2] + "–" + c[3] + "%" : ""}</span>
       <span class="muted">takes ${c[4] ? c[5] + "–" + c[6] + "%" : "nothing"}${c[7] ? "" : " · slower"}</span></td>`;
@@ -233,7 +269,7 @@
         if (m.where === "Party") cells.forEach((c, j) => { if (c[0]) covered[j] = true; });
         h += `<tr data-text="${esc((m.name + " " + m.moves.join(" ")).toLowerCase())}"><td class="pk">${spr(m.name)}<div><b>${esc(m.name)}</b> <span class="muted">Lv ${m.level}</span>
           ${m.where === "Party" ? '<span class="tag boss">Party</span>' : `<span class="tag">PC</span>`}${m.level > d.cap ? `<span class="tag over">Over the cap (${d.cap})</span>` : ""}${m.hp === 0 ? '<span class="tag over">Fainted</span>' : ""}
-          <br><span class="muted">${esc(m.nature)} · ${esc(m.ability)}${m.item ? " · @ " + esc(m.item) : ""}</span><br><span class="muted">${esc(m.moves.join(", "))}</span></div></td>
+          <br><span class="muted">${esc(m.nature)} · ${ab(m.ability)}${m.item ? " · @ " + esc(m.item) : ""}</span>${mvs(m.moves)}</div></td>
           <td class="n"><b>${wins}</b>/${team.length}</td>${cells.map(cellHtml).join("")}</tr>`;
       });
       h += `</tbody></table></div>`;
@@ -301,7 +337,7 @@
     tr.insertAdjacentHTML("afterend", `<tr class="det"><td colspan="${3 + team.length}"><div class="cols">
       <div><b>Matchups at level ${d.cap}</b><ul class="ml">${cols.map((c, j) => { const g = d.grid[i][c], mv = [g[1]].concat(r.moves.filter(x => x !== g[1])).filter(Boolean).slice(0, 4);
         return `<li>${sentence(g, team[j])} ${calcLink(team[j].calc, r.s, d.cap, mv, null, team[j].l)}</li>`; }).join("")}</ul></div>
-      <div><b>Moves counted</b> <span class="muted">(ability ${esc(r.ab)})</span><br>${r.moves.map(m => `<span class="chip">${esc(m)}</span>`).join("") || '<span class="muted">No damaging moves.</span>'}
+      <div><b>Moves counted</b> <span class="muted">(ability ${ab(r.ab)})</span><br>${r.moves.length ? mvs(r.moves) : '<span class="muted">No damaging moves.</span>'}
       <br><br><b>Where</b><br>${r.where.map(esc).join("<br>")}</div></div></td></tr>`);
   }
 
@@ -352,12 +388,12 @@
     let ti = S.ttab;
     if (ti < 0 || ti >= T.length) { ti = SAVE ? T.findIndex(x => { const f = META.fights.find(f => f.split === x.split && (G.leaders || []).includes(f.key)); return !f || fightIdx(f.key) > bmax; }) : 0; if (ti < 0) ti = T.length - 1; }
     const sp = T[ti];
-    let h = `<p class="intro">Every trainer's team, split by split, in the order you meet them${G.modes ? ` (${S.mode} mode)` : ""}. Red edge: you have to fight them. Each Pokémon links to the calc with that exact set loaded.</p>`;
-    h += `<div class="prepf tabs ttabs">` + T.map((x, i) => `<button data-ttab="${i}" class="${i === ti ? "on" : ""}">${esc(x.split)} <span class="muted">${x.cap}</span></button>`).join("") + `</div>`;
+    let h = `<p class="intro">Every trainer's team, split by split, in the order you meet them${G.modes ? ` (${S.mode} mode)` : ""}. Red edge: you have to fight them. Move chips show type, power and physical / special / status; hover or tap a move or an ability for what it does in this game. ${G.trainersNote || ""}</p>`;
+    h += `<div class="prepf tabs ttabs">` + T.map((x, i) => `<button data-ttab="${i}" class="${i === ti ? "on" : ""}">${esc(x.label || x.split)} <span class="muted">${x.cap}</span></button>`).join("") + `</div>`;
     const mine = S.starter;
     const list = sp.trainers.filter(t => !S.tonly || t.mand);
     const nm = sp.trainers.filter(t => t.mand).length;
-    h += `<div class="prephead"><b>${esc(sp.split)} split</b> <span class="muted">level cap ${sp.cap} · ${sp.trainers.length} trainers, ${nm} you have to fight</span>
+    h += `<div class="prephead"><b>${esc(sp.label || sp.split)} split</b> <span class="muted">level cap ${sp.cap} · ${sp.trainers.length} trainers, ${nm} you have to fight</span>
       <label class="chk"><input type="checkbox" id="tonly" ${S.tonly ? "checked" : ""}> Only the ones you have to fight</label></div>`;
     let loc = null;
     list.forEach(t => {
@@ -370,8 +406,9 @@
           : t.ai & 6 ? '<a class="tag ai" href="#ai">Partly smart AI</a>' : '<a class="tag" href="#ai" title="Picks any move that has an effect">Basic AI</a>');
       h += `<div class="trainer ${t.mand ? "mand" : ""} ${t.partner ? "partner" : ""}" data-text="${esc((t.name + " " + t.loc + " " + t.team.map(m => m.s + " " + m.m.join(" ")).join(" ")).toLowerCase())}">
         <div class="th"><b>${esc(t.name)}</b>${tags}${(t.notes || []).length ? ` <span class="muted">${esc(t.notes.join(" · "))}</span>` : ""}</div>
-        <div class="tteam">${t.team.map(m => `<div class="tm">${spr(m.s)}<div><b>${esc(m.s)}</b> <span class="muted">Lv ${m.l}</span>${m.i ? `<br><span class="muted">@ ${esc(m.i)}</span>` : ""}
-          <br><span class="muted">${esc(m.a)}${m.n ? " · " + esc(m.n) : ""}</span><div class="mv">${m.m.map(esc).join(", ")}</div>${calcLink(m.calc, null, 0, [], "Calc", m.l)}</div></div>`).join("")}</div></div>`;
+        <div class="tteam">${t.team.map(m => { const d = META.mons[m.s];
+          return `<div class="tm">${spr(m.s)}<div><b>${esc(m.s)}</b> <span class="muted">Lv ${m.l}</span><div class="sub">${d ? d.t.map(type).join("") : ""}</div>
+          <span class="muted">${ab(m.a)}${m.n ? " · " + esc(m.n) : ""}${m.i ? ` · @ ${esc(m.i)}` : ""}</span>${mvs(m.m)}${calcLink(m.calc, null, 0, [], "Calc", m.l)}</div></div>`; }).join("")}</div></div>`;
     });
     if (!list.length) h += `<p class="muted">Nobody to show.</p>`;
     return h;
@@ -390,7 +427,7 @@
     const card = x => { const sv = (byFam[fam(x.s)] || [])[0];
       const n = sv ? sv.name : x.s;
       return `<div class="card" data-text="${esc((n + " " + x.area).toLowerCase())}">${spr(n)}<div><b>${esc(n)}</b> ${sv ? `<span class="muted">Lv ${sv.level} · ${esc(sv.where)}</span>` : ""}${sv && sv.hp === 0 ? '<span class="tag over">Fainted in party</span>' : ""}
-        <br><span class="muted">${esc(x.area)}${x.extra != null ? " · extra" : ""}</span>${sv ? `<br><span class="muted">${esc(sv.nature)} · ${esc(sv.ability)} · ${esc(sv.moves.join(", "))}</span>` : ""}</div>
+        <br><span class="muted">${esc(x.area)}${x.extra != null ? " · extra" : ""}</span>${sv ? `<br><span class="muted">${esc(sv.nature)} · ${ab(sv.ability)}</span>${mvs(sv.moves)}` : ""}</div>
         <div class="acts"><button class="btn ${x.dead ? "" : "red"}" ${x.extra != null ? `data-xdead="${x.extra}"` : `data-dead="${esc(x.area)}"`}>${x.dead ? "Revive (undo)" : "It died"}</button></div></div>`; };
     const alive = rows.filter(x => !x.dead), dead = rows.filter(x => x.dead);
     let h = `<p class="intro">Everything you've caught in this run. Mark a Pokémon dead when it faints; it moves to the graveyard and its area stays used.</p>${saveBar()}`;
@@ -420,7 +457,7 @@
       const w = [...(where[n] || [])];
       h += `<tr class="row" data-text="${esc((n + " " + d.t.join(" ") + " " + d.ab.join(" ") + " " + w.join(" ")).toLowerCase())}"><td>${spr(n)}</td><td class="muted">${d.no}</td><td><b>${esc(n)}</b>
         ${ev[n] ? `<br><span class="muted">${esc(ev[n].join(", "))}</span>` : ""}${w.length ? `<br><span class="muted">${esc(w.slice(0, 4).join("; "))}${w.length > 4 ? "…" : ""}</span>` : ""}</td>
-        <td>${d.t.map(type).join("")}</td>${d.bs.map(x => `<td class="n">${x}</td>`).join("")}<td class="n"><b>${d.bs.reduce((a, b) => a + b, 0)}</b></td><td>${esc(d.ab.join(" / "))}</td></tr>`;
+        <td>${d.t.map(type).join("")}</td>${d.bs.map(x => `<td class="n">${x}</td>`).join("")}<td class="n"><b>${d.bs.reduce((a, b) => a + b, 0)}</b></td><td>${d.ab.filter(a => a && a.trim() !== "-").map(ab).join(" / ")}</td></tr>`;
     });
     return h + `</tbody></table></div>`;
   }
@@ -522,6 +559,9 @@
   const keep = fn => { const y = scrollY; return show().then(() => scrollTo(0, y)); };
   document.addEventListener("click", ev => {
     const t = ev.target;
+    const tp = t.closest("[data-tip]");
+    if (tp) { tipFor === tp ? hideTip() : showTip(tp); ev.stopPropagation(); return; }
+    if (tipFor && !t.closest("#tip")) hideTip();
     if (t.dataset.mode) { if (t.dataset.mode !== S.mode) { store.set("mode", t.dataset.mode); location.reload(); } return; }
     if (t.dataset.ttab != null) { S.ttab = +t.dataset.ttab; store.set("ttab", S.ttab); show(); return; }
     if (t.id === "tonly") { S.tonly = !S.tonly; store.set("tonly", S.tonly); keep(); return; }
@@ -568,9 +608,9 @@
     $(".tools").prepend(mb);
   }
   $("#q").addEventListener("input", filter);
-  addEventListener("hashchange", () => { $("#q").value = ""; show(); });
-  Promise.all([load("meta.json"), load("ids.json")]).then(async ([m, i]) => {
-    META = m; IDS = i;
+  addEventListener("hashchange", () => { $("#q").value = ""; hideTip(); show(); });
+  Promise.all([load("meta.json"), load("ids.json"), load("text.json").catch(() => TXT)]).then(async ([m, i, tx]) => {
+    META = m; IDS = i; TXT = tx;
     if (META.modes) { if (!META.modes[S.mode]) S.mode = Object.keys(META.modes)[0]; Object.assign(META, META.modes[S.mode]); }
     M = Model(META);
     await show();

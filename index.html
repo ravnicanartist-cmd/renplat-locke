@@ -27,7 +27,7 @@ if (/^#(prep|run|box|dex|data)/.test(location.hash)) location.replace("renplat/"
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const GAMES = [
     { id: "sgss", store: "sgss", name: "Storm Silver", note: "Drayano's Sacred Gold / Storm Silver. No tracker yet: log its deaths and Hall of Fame team by hand on the Gauntlet page.", url: null },
-    { id: "rp", store: "rp", name: "Renegade Platinum", note: "PChal QoL 1.9.2. Boss Prep, Nuzlocke areas, box, Pokédex, save reader, calc.", url: "renplat/" },
+    { id: "rp", store: "rp", name: "Renegade Platinum", note: "PChal QoL 1.9.2. Boss Prep, every trainer team by split, Nuzlocke areas, box, Pokédex, save reader, calc.", url: "renplat/" },
     { id: "bb2r", store: "bb2r", name: "Blaze Black 2 Redux", note: "PChal QoL build. Boss Prep, every trainer team by split, Normal / Challenge, Nuzlocke areas, save reader, calc, enemy AI notes.", url: "bb2r/" }
   ];
   const get = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };

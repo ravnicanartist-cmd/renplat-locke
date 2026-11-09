@@ -71,9 +71,29 @@ def match_set(m, tname=""):
     return best if bs >= 25 else None
 
 TR = {mode: json.load(open(f"/home/claude/bb2/trainers_{mode}.json")) for mode in ("normal", "challenge")}
+ABK = {KEY(a): a for v in MONS.values() for a in (v.get("ab") or [])}
+def fix_shift(m):
+    """a few rows of the docs are shifted by one cell (a nature or item sits in the ability box): put them back"""
+    a = m["a"]
+    if not a or KEY(a) in ABK: return dict(m, a=ABK.get(KEY(a), a))
+    m = dict(m, shifted=True)
+    if "(+" in a:                            # nature | ability | item | 3 moves
+        m["n"], m["a"], m["i"], m["m"] = a.split(" ")[0], m["i"], (m["m"] or [""])[0], m["m"][1:]
+    elif KEY(m["i"]) in {KEY(x) for x in MOVES}:   # item | move | 3 moves
+        m["i"], m["m"], m["a"] = ("" if a in ("No Item", "-") else a), [m["i"]] + m["m"], ""
+    else:                                    # two items: keep the first, the calc data settles it below
+        m["i"], m["a"], m["broken"] = a, "", True
+    if m["i"] in ("No Item", "-"): m["i"] = ""
+    m["a"] = ABK.get(KEY(m["a"]), "") if m["a"] else ""
+    return m
 def boss(m, tname=""):
+    m = fix_shift(m)
     s2 = canon(m["s"])
     hit = match_set(m, tname)
+    if hit and (not m["a"] or m["a"] not in (MONS.get(s2, {}).get("ab") or [m["a"]])):
+        m = dict(m, a=hit[2].get("ability") or m["a"])           # the docs' ability doesn't fit the species: trust hzla's ROM data
+    if hit and m.get("broken") and hit[2].get("item") not in (None, "", "-"): m["i"] = hit[2]["item"]
+    if hit and m.get("shifted") and len(m["m"]) < len(hit[2].get("moves") or []): m = dict(m, m=list(hit[2]["moves"]))
     iv = 31
     out = {"s": s2, "l": m["l"], "n": m["n"] if m["n"] in MD.NATURES else "Hardy", "a": m["a"] or (MONS.get(s2, {}).get("ab") or [""])[0],
            "i": m["i"], "m": [mcanon(x) for x in m["m"]], "iv": iv}

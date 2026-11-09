@@ -4,7 +4,7 @@ Static pages for Drayano-hack Nuzlockes, one folder per game, sharing one tracke
 
 | Folder | Game | What's there |
 | --- | --- | --- |
-| `renplat/` | Renegade Platinum (PChal QoL 1.9.2) | Boss Prep, Nuzlocke areas, box, Pokédex, Platinum save reader |
+| `renplat/` | Renegade Platinum (PChal QoL 1.9.2) | Boss Prep, every trainer team by split, Nuzlocke areas, box, Pokédex, Platinum save reader |
 | `bb2r/` | Blaze Black 2 Redux (PChal QoL build) | Boss Prep (gyms, Elite Four, champion, Team Plasma bosses), every trainer team by split, Normal / Challenge switch, Nuzlocke areas, box, Pokédex, B2W2 save reader, enemy AI notes |
 | `index.html` | Hub | Game list and the Drayano Gauntlet (Storm Silver → Renegade Platinum → Blaze Black 2 Redux): families that died or made the Hall of Fame in an earlier game are marked "Cursed" in later ones |
 
@@ -22,6 +22,12 @@ Everything runs in the browser. Open the repo through any static server or GitHu
 - `tools/renplat/`: reads the patched ROM and the Renegade Platinum documentation (see the comments in `build.py`).
 - `tools/bb2r/`: no ROM needed. Species, moves, learnsets and trainer sets (with IVs and AI flags) come from hzla's Dynamic-Calc-Decomps data for the PChal QoL build (`vw2qol`, file `bb2redux1-4.js`); trainer teams for both modes, locations and items from the PChal workbooks (`ex_trainers.py`); story order and gates in `story_bb2r.py`; save-reader names in `ids_bb2r.py` (PKHeX text + growth rates).
 - Level caps: each split's leader ace (Ghetsis's ace for the Plasma split, Iris's for the League), per mode.
+
+## Move and ability tooltips
+
+Every move shows its type, power and category (physical / special / status) as it is in that hack; hovering or tapping a move or an ability opens a tooltip. `tools/text/src.py` collects each hack's accuracy / PP and its documented move changes (Renegade Platinum documentation, BB2 Redux "Move Changes" sheet); `tools/text/build_text.js` adds effect descriptions from Pokémon Showdown's data for that generation (`@pkmn/dex`) and writes `<game>/data/text.json`.
+
+`tools/renplat/trainers_rp.py` builds the Renegade Platinum Trainers page from PChal's Trainer_Battles.xlsx (mandatory / optional / partner), with levels, items and moves taken from the ROM wherever the trainer can be matched (469 of 499).
 
 ## Tests
 
