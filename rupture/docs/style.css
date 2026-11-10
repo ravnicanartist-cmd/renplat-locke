@@ -113,3 +113,23 @@ ul.ml { margin: 6px 0 0; padding-left: 18px; } ul.ml li { margin: 0 0 4px; }
 .bosspick button.done { opacity: .6; }
 .bosspick button.g-villain { border-color: #6b3a4f; } .bosspick button.g-rival { border-color: #3a5a6b; }
 .tabs { margin-bottom: 8px; }
+/* move chips and ability / move tooltips (same as the hub's game pages) */
+.mon .tys { min-height: 18px; }
+.mvs { display: grid; grid-template-columns: 1fr; gap: 3px 8px; margin: 6px 0 0; grid-column: 1 / -1; }
+.mvs.mvg { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+td .mvs { margin-top: 4px; }
+.mvx { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; line-height: 1.25; cursor: help; min-width: 0; }
+.mvx .ty { font-style: normal; font-size: 9.5px; font-weight: 700; letter-spacing: .3px; color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,.45); border-radius: 3px; padding: 1px 0; width: 30px; text-align: center; flex: none; }
+.mvx .bp { font-style: normal; font-size: 11px; color: var(--muted); }
+.mvx .cat { font-style: normal; font-size: 9px; font-weight: 700; border-radius: 3px; padding: 0 3px; flex: none; }
+.mvx .cat.ph { background: #b8562a; color: #fff; } .mvx .cat.ph::after { content: "PHY"; }
+.mvx .cat.sp { background: #3b5ea8; color: #fff; } .mvx .cat.sp::after { content: "SPE"; }
+.mvx .cat.st { background: #4a4f5a; color: #cfd6e0; } .mvx .cat.st::after { content: "STA"; }
+.abx { border-bottom: 1px dotted var(--muted); cursor: help; }
+#tip { position: absolute; z-index: 50; display: none; background: #e8f3f8; color: #10202c; border: 1px solid #7fb2c4; border-radius: 6px; padding: 8px 11px;
+  font-size: 13px; line-height: 1.4; box-shadow: 0 6px 18px rgba(0,0,0,.45); pointer-events: none; }
+#tip .muted { color: #44606f; }
+#tip .type { font-size: 11px; min-width: 0; }
+#tip::after { content: ""; position: absolute; left: calc(var(--ax, 50%) - 8px); bottom: -8px; border: 8px solid transparent; border-bottom: 0; border-top-color: #7fb2c4; }
+#tip.below::after { bottom: auto; top: -8px; border: 8px solid transparent; border-top: 0; border-bottom-color: #7fb2c4; }
+.mvx > :not(i) { white-space: nowrap; }

@@ -55,14 +55,14 @@
     return `../index.html?data=${calcFile()}&gen=8&dmgGen=8&types=6&customPoks=1&noSwitch=1&evs=0&opp=${encodeURIComponent(id)}`;
   }
   function monCard(m) {
-    const moves = (m.m || []).map(x => `<li>${esc(x)}</li>`).join("");
     return `<div class="mon">${sprite(m.s)}<div class="nm">${esc(m.s)} <span class="sub">Lv ${m.l}</span></div>
-      <div class="sub">${esc(m.a)}${m.n ? " · " + esc(m.n) : ""}</div><div class="sub">${m.i ? "@ " + esc(m.i) : "&nbsp;"}</div>
-      <ul>${moves}</ul><a class="calc" href="${calcLink(m.c)}" target="_blank" rel="noopener">Calc ↗</a></div>`;
+      <div class="sub tys">${monTypes(m.s)}</div>
+      <div class="sub">${ab(m.a)}${m.n ? " · " + esc(m.n) : ""}${m.i ? " · @ " + esc(m.i) : ""}</div>
+      ${mvs(m.m || [])}<a class="calc" href="${calcLink(m.c)}" target="_blank" rel="noopener">Calc ↗</a></div>`;
   }
   async function trainers() {
     const base = `trainers-${S.dir}-${S.diff}`;
-    const [single, doubles] = await Promise.all([load(base + ".json"), S.dbl ? load(base + "-doubles.json") : Promise.resolve([])]);
+    const [single, doubles] = await Promise.all([load(base + ".json"), S.dbl ? load(base + "-doubles.json") : Promise.resolve([]), loadMM()]);
     const dmap = {}; doubles.forEach(t => dmap[t.id] = t);
     let html = `<p class="intro">Every trainer in the order you meet them, with exact levels, abilities, natures, held items and moves.
       <b>${S.dir === "rewind" ? "Rewind" : "Forward"}</b> bosses, <b>${S.diff === "hard" ? "Hard" : "Normal"}</b>, <b>${S.dbl ? "Doubles mode" : "single battles"}</b>.
@@ -126,6 +126,51 @@
     return CN;
   }
   const spr = (n, cls) => sprite((CN && CN[n]) || n, cls);
+  // moves and abilities: type / category / power at a glance, the rest in a tooltip (hover, or tap on a phone)
+  let MM = null, TXT = { ab: {}, mv: {} };   // MM = prep-meta.json (types of every Pokémon and move)
+  const loadMM = () => Promise.all([load("prep-meta.json"), load("text.json").catch(() => TXT)]).then(([m, t]) => { MM = m; TXT = t; });
+  const TA = { Normal: "NOR", Fire: "FIR", Water: "WAT", Electric: "ELE", Grass: "GRA", Ice: "ICE", Fighting: "FIG", Poison: "POI", Ground: "GRO",
+    Flying: "FLY", Psychic: "PSY", Bug: "BUG", Rock: "ROC", Ghost: "GHO", Dragon: "DRA", Dark: "DAR", Steel: "STE", Fairy: "FAI" };
+  const CATS = { Physical: ["ph", "Physical"], Special: ["sp", "Special"], Status: ["st", "Status"] };
+  function mv(n) {
+    const d = MM && MM.moves[n];
+    if (!d) return `<span class="mvx">${esc(n)}</span>`;
+    const [t, c, bp] = d, cat = CATS[c] || ["st", c];
+    return `<span class="mvx" data-tip="m:${esc(n)}"><i class="ty" style="background:${TYPES[t] || "#555"}">${TA[t] || esc(t)}</i>${esc(n)}${bp > 1 ? `<i class="bp">${bp}</i>` : ""}<i class="cat ${cat[0]}" title="${cat[1]}"></i></span>`;
+  }
+  const mvs = l => `<div class="mvs">${l.map(mv).join("")}</div>`;
+  const ab = n => n ? `<span class="abx" data-tip="a:${esc(n)}">${esc(n)}</span>` : "";
+  const monTypes = n => { const d = MM && MM.mons[n]; return d ? d.t.map(type).join("") : ""; };
+  function tipHtml(k) {
+    const kind = k[0], n = k.slice(2);
+    if (kind === "a") return `<b>${esc(n)}</b><br>${esc(TXT.ab[n] || "No description found.")}`;
+    const d = (MM && MM.moves[n]) || [], x = TXT.mv[n] || [];
+    const [t, c, bp] = d;
+    return `<b>${esc(n)}</b> ${type(t)} <span class="muted">${esc(c)}</span><br>Power ${bp > 1 ? bp : "—"} · Accuracy ${x[0] === "—" || x[0] == null || x[0] === "" ? "—" : x[0] + "%"}${x[1] ? " · " + x[1] + " PP" : ""}${x[3] ? " · Priority " + esc(x[3]) : ""}
+      ${x[2] ? `<br>${esc(x[2])}` : ""}`;
+  }
+  const tip = document.createElement("div"); tip.id = "tip"; document.body.appendChild(tip);
+  let tipFor = null;
+  function showTip(el) {
+    tipFor = el; tip.innerHTML = tipHtml(el.dataset.tip); tip.style.display = "block";
+    const r = el.getBoundingClientRect(), w = Math.min(340, innerWidth - 16);
+    tip.style.maxWidth = w + "px";
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let x = Math.max(8, Math.min(innerWidth - tw - 8, r.left + r.width / 2 - tw / 2)), y = r.top - th - 10, below = y < 8;
+    if (below) y = r.bottom + 10;
+    tip.style.left = x + scrollX + "px"; tip.style.top = y + scrollY + "px";
+    tip.classList.toggle("below", below); tip.style.setProperty("--ax", (r.left + r.width / 2 - x) + "px");
+  }
+  const hideTip = () => { tip.style.display = "none"; tipFor = null; };
+  const hover = () => matchMedia("(hover: hover)").matches;
+  document.addEventListener("mouseover", ev => { const el = ev.target.closest && ev.target.closest("[data-tip]"); if (el && hover()) showTip(el); });
+  document.addEventListener("mouseout", ev => { const el = ev.target.closest && ev.target.closest("[data-tip]"); if (el && hover() && !el.contains(ev.relatedTarget)) hideTip(); });
+  document.addEventListener("click", ev => {
+    const tp = ev.target.closest && ev.target.closest("[data-tip]");
+    if (tp) { ev.preventDefault(); ev.stopPropagation(); tipFor === tp ? hideTip() : showTip(tp); return; }
+    if (tipFor && !ev.target.closest("#tip")) hideTip();
+  }, true);
+  addEventListener("scroll", () => { if (tipFor && !hover()) hideTip(); }, { passive: true });
   async function encounters() {
     await calcNames();
     const e = await load("encounters.json");
@@ -313,7 +358,7 @@
   }
   async function prep() {
     await calcNames();
-    const [all, meta] = await Promise.all([loadPrep(), load("prep-meta.json")]);
+    const [all, meta] = await Promise.all([loadPrep(), load("prep-meta.json"), loadMM()]);
     META = meta; OWNED = ownedNat();
     const btns = buttons(all);
     let e = S.sel && btns.some(b => keyOf(b) === S.sel) ? resolve(all, S.sel) : null;
@@ -356,7 +401,7 @@
         const over = !SAVE.info.capsOff && m.level > e.cap;
         html += `<tr data-text="${esc([m.name, m.ability, m.item].concat(m.moves).join(" ").toLowerCase())}"><td class="pk">${spr(m.name)}<div><b>${esc(m.name)}</b> <span class="muted">Lv ${m.level}</span>
           ${k < SAVE.party.length ? '<span class="tag boss">Party</span>' : '<span class="tag">PC</span>'}${over ? `<span class="tag over">Over the cap (${e.cap})</span>` : ""}
-          <br><span class="muted">${esc(m.nature)} · ${esc(m.ability)}${m.item ? " · @ " + esc(m.item) : ""}</span><br><span class="muted">${esc(m.moves.join(", "))}</span></div></td>
+          <br><span class="muted">${esc(m.nature)} · ${ab(m.ability)}${m.item ? " · @ " + esc(m.item) : ""}</span>${mvs(m.moves)}</div></td>
           <td class="n"><b>${wins}</b>/${team.length}</td>` + cells.map((c, j) => !c ? "<td></td>" :
           `<td class="mu ${c[0] ? "w" : "l"}"><a href="${calcLink(team[j].c)}&me=${encodeURIComponent(m.name)}&lv=${m.level}&mv=${encodeURIComponent(m.moves.join(","))}" target="_blank" rel="noopener" title="Open in the calc">${c[0] ? "✓" : "✗"}</a>
           <span>${esc(c[1] || "—")} ${c[1] ? c[2] + "–" + c[3] + "%" : ""}</span><span class="muted">takes ${c[4] ? c[5] + "–" + c[6] + "%" : "nothing"}${c[7] ? "" : " · slower"}</span></td>`).join("") + `</tr>`;
@@ -454,7 +499,7 @@
         return `<li><b>${c[0] ? "✓" : "✗"} vs ${esc(m.s)}</b>: ${c[7] ? "you move first" : "it moves first"}. ${c[1] ? `Your ${esc(c[1])} does ${c[2]}–${c[3]}%` : "You have no damaging move that hits it"}${c[4] ? `; its ${esc(c[4])} does ${c[5]}–${c[6]}% to you.` : "; it can't damage you."}
           <a href="${prepCalc(e, r, j)}" target="_blank" rel="noopener">Calc ↗</a></li>`; }).join("");
       tr.insertAdjacentHTML("afterend", `<tr class="det"><td colspan="${3 + e.team.length}"><div class="cols"><div><b>Matchups</b><ul class="ml">${lines}</ul></div>
-        <div><b>Moves counted</b> <span class="muted">(${esc(r.ab)}; Lv 1, TM and unlocked tutor moves can be relearned from the summary screen with START)</span><br>${r.moves.map(m => `<span class="chip">${esc(m)}</span>`).join("")}</div></div></td></tr>`);
+        <div><b>Moves counted</b> <span class="muted">(${ab(r.ab)}; Lv 1, TM and unlocked tutor moves can be relearned from the summary screen with START)</span><div class="mvs mvg">${r.moves.map(mv).join("")}</div></div></div></td></tr>`);
     });
   }
 
