@@ -25,7 +25,9 @@
   let NUZ = store.get("nuz", { on: true, shiny: true, areas: {}, dead: {}, extra: [] });
   let STARS = new Set(store.get("stars", []));
   let SAVE = store.get("save", null);
+  let RUNS = store.get("runs", []), PEND = null;      // run history (finished runs) and a run being logged
   const saveNuz = () => store.set("nuz", NUZ);
+  const CURSAVE = () => SAVE;
   const TABS = G.tabs;
   const STARTERS = G.starters;
   const fightPath = key => G.modes ? `fights/${S.mode}/${key}.json` : `fights/${key}.json`;
@@ -141,7 +143,7 @@
   const catchable = r => { const t = nuzTag(r); return t && (t[0] === "nz-free" || t[0] === "nz-gift"); };
 
   // ---------------------------------------------------------------- fights beaten (from the save)
-  function beatenMax() {
+  function beatenMax(SAVE = CURSAVE()) {    // the tracker's save, or the one being logged in Run history
     if (!SAVE) return -1;
     let mx = -1;
     const BADGE = G.badges || {};
@@ -483,6 +485,71 @@
     return h + `</tbody></table></div>`;
   }
 
+  // ---------------------------------------------------------------- Run history (finished runs, for your own stats)
+  const RESULTS = { wipe: ["Wiped", "over"], won: ["Beat the game", "boss"], quit: ["Stopped", ""] };
+  const readerFor = () => ({ b2w2: window.SaveReaderB2W2, hgss: window.SaveReaderHGSS, sgx: window.SaveReaderSGX }[G.save] || window.SaveReader);
+  function trackerDeaths() {
+    const out = [];
+    Object.keys(NUZ.dead || {}).forEach(a => { const r = NUZ.areas[a]; if (r && r.s) out.push(r.s + " (" + a + ")"); });
+    (NUZ.extra || []).forEach(x => { if (x.dead) out.push(x.s + " (" + (x.where || "extra") + ")"); });
+    return out;
+  }
+  function hist() {
+    let h = `<p class="intro">Log each run when it ends: read the save from that moment, say where it ended, and it's kept here (and in your gist, with sync on). Deaths come from the "It died" buttons on the Nuzlocke and Box pages; you can change the number before saving.</p>`;
+    h += `<h3 class="sec">Log a finished run</h3><div class="sum">`;
+    if (!PEND) {
+      h += `<label class="savebtn">Read the save from this run (.sav)<input type="file" id="histsave" accept=".sav,.dsv,.bin,application/octet-stream"></label>
+        ${SAVE ? ` <button class="btn" id="histcur">Use the save already read (${esc(SAVE.name || "save")}, ${SAVE.badges.length} badges, ${SAVE.hours}h ${String(SAVE.minutes).padStart(2, "0")}m)</button>` : ""}
+        <p class="muted">The save is only read for this log; your tracker isn't changed.</p>`;
+    } else {
+      const sv = PEND, bi = beatenMax(sv), next = META.fights[bi + 1], dl = trackerDeaths();
+      h += `<p><b>${esc(sv.name || "Your save")}</b> · ${sv.badges.length} badge${sv.badges.length === 1 ? "" : "s"} · ${sv.hours}h ${String(sv.minutes).padStart(2, "0")}m${sv.mode ? " · " + esc(sv.mode) : G.modes ? " · " + esc(S.mode) : ""} · ${sv.party.length} in party, ${sv.boxes.length} in the PC</p>
+        <div class="hteam">${sv.party.map(m => `<span>${spr(m.name)}${esc(m.name)} <span class="muted">Lv ${m.level}</span></span>`).join("")}</div>
+        <p><label>How it ended <select class="field" id="hres">${Object.entries(RESULTS).map(([k, v]) => `<option value="${k}">${v[0]}</option>`).join("")}</select></label>
+        <label>Where <select class="field" id="hwhere">${META.fights.map((f, i) => `<option value="${esc(f.key)}" ${next && f.key === next.key ? "selected" : ""}>${esc(f.label)}</option>`).join("")}<option value="">Somewhere else</option></select></label></p>
+        <p><input class="field" id="hnote" placeholder="Where exactly / notes (e.g. Route 42, wild Gyarados crit)" style="width:min(520px,100%)">
+        <label>Deaths <input class="field" id="hdeaths" type="number" min="0" value="${dl.length}" style="width:70px"></label></p>
+        ${dl.length ? `<p class="muted">Logged deaths: ${esc(dl.join(", "))}</p>` : ""}
+        <p><label class="chk"><input type="checkbox" id="hclear"> Also clear the Nuzlocke tracker and the read save for a new run</label></p>
+        <button class="btn pri" id="hsave">Save to history</button> <button class="btn" id="hcancel">Cancel</button>`;
+    }
+    h += `</div>`;
+    const runs = RUNS.slice().sort((a, b) => b.date - a.date);
+    h += `<h3 class="sec">Your runs (${runs.length})</h3>`;
+    if (!runs.length) return h + `<p class="muted">Nothing logged yet.</p>`;
+    const wipes = runs.filter(r => r.result === "wipe"), cnt = {};
+    wipes.forEach(r => { const k = r.whereLabel || r.note || "?"; cnt[k] = (cnt[k] || 0) + 1; });
+    const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+    const avg = k => (runs.reduce((a, r) => a + (r[k] || 0), 0) / runs.length);
+    h += `<div class="sum"><b>${runs.length}</b> run${runs.length === 1 ? "" : "s"} · <b>${wipes.length}</b> wipe${wipes.length === 1 ? "" : "s"} · <b>${runs.filter(r => r.result === "won").length}</b> won
+      · ${avg("badges").toFixed(1)} badges on average · ${avg("deaths").toFixed(1)} deaths on average${top ? ` · most wipes: <b>${esc(top[0])}</b> (${top[1]})` : ""}
+      · longest: ${(m => `${m / 60 | 0}h ${String(m % 60).padStart(2, "0")}m`)(Math.max(...runs.map(r => r.hours * 60 + r.minutes)))}</div>`;
+    h += `<div class="wrap"><table class="hist"><thead><tr><th>Date</th><th>Ended</th><th>Where</th><th class="n">Badges</th><th class="n">Time</th><th class="n">Deaths</th><th>Team</th><th></th></tr></thead><tbody>`;
+    runs.forEach(r => {
+      const res = RESULTS[r.result] || ["?", ""];
+      h += `<tr data-text="${esc([r.whereLabel, r.note, r.mode].concat(r.party.map(m => m.name)).join(" ").toLowerCase())}">
+        <td>${esc(new Date(r.date).toLocaleDateString())}${r.mode ? `<br><span class="muted">${esc(r.mode)}</span>` : ""}</td><td><span class="tag ${res[1]}">${res[0]}</span></td>
+        <td>${esc(r.whereLabel || "")}${r.note ? `<br><span class="muted">${esc(r.note)}</span>` : ""}</td><td class="n">${r.badges}</td><td class="n">${r.hours}h ${String(r.minutes).padStart(2, "0")}m</td>
+        <td class="n">${r.deaths}${r.dead && r.dead.length ? `<br><span class="muted" title="${esc(r.dead.join(", "))}">who?</span>` : ""}</td>
+        <td><details><summary class="hteam">${r.party.map(m => `<span>${spr(m.name)}<span class="muted">${m.level}</span></span>`).join("")}</summary>
+          <ul class="ml">${r.party.map(m => `<li><b>${esc(m.name)}</b> Lv ${m.level} · ${esc(m.nature || "")} · ${ab(m.ability)}${m.item ? " · @ " + esc(m.item) : ""}${mvs(m.moves || [])}</li>`).join("")}</ul>
+          <p class="muted">${r.pc} in the PC · ${r.areas} areas used${r.dead && r.dead.length ? " · died: " + esc(r.dead.join(", ")) : ""}</p></details></td>
+        <td><button class="btn small red" data-delrun="${esc(r.id)}">Delete</button></td></tr>`;
+    });
+    return h + `</tbody></table></div>`;
+  }
+  function saveRun() {
+    const sv = PEND, k = $("#hwhere").value, f = META.fights.find(x => x.key === k), dl = trackerDeaths();
+    const run = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), date: Date.now(), game: G.id, mode: sv.mode || (G.modes ? S.mode : ""),
+      result: $("#hres").value, where: k, whereLabel: f ? f.label : "", note: $("#hnote").value.trim(), deaths: Math.max(0, +$("#hdeaths").value || 0), dead: dl,
+      name: sv.name, badges: sv.badges.length, hours: sv.hours, minutes: sv.minutes, starter: sv.starterMon || sv.starter || S.starter || "",
+      party: sv.party.map(m => ({ name: m.name, nick: m.nick || "", level: m.level, nature: m.nature, ability: m.ability, item: m.item, moves: m.moves })),
+      pc: sv.boxes.length, areas: Object.values(NUZ.areas).filter(a => a.st === "caught").length };
+    RUNS.push(run); store.set("runs", RUNS);
+    if ($("#hclear").checked) { NUZ = { on: NUZ.on, shiny: NUZ.shiny, areas: {}, dead: {}, extra: [] }; saveNuz(); SAVE = null; store.set("save", null); }
+    PEND = null;
+  }
+
   // ---------------------------------------------------------------- Save & sync
   function data() {
     const g = gist.get();
@@ -514,14 +581,15 @@
   const Sync = {
     status: "", t: null,
     blob() { let ga = null; try { ga = JSON.parse(localStorage.getItem("hub.gauntlet") || "null"); } catch (e) {}
-      return { v: 1, game: G.id, updated: store.get("updated", 0), nuz: NUZ, stars: [...STARS], save: SAVE, starter: S.starter, gender: S.gender, team: S.team, gauntlet: ga }; },
+      return { v: 1, game: G.id, updated: store.get("updated", 0), nuz: NUZ, stars: [...STARS], save: SAVE, starter: S.starter, gender: S.gender, team: S.team, gauntlet: ga, runs: RUNS }; },
     apply(b) {
       try { const here = JSON.parse(localStorage.getItem("hub.gauntlet") || "null");
         if (b.gauntlet && (!here || (b.gauntlet.updated || 0) > (here.updated || 0))) localStorage.setItem("hub.gauntlet", JSON.stringify(b.gauntlet)); } catch (e) {}
       NUZ = b.nuz || NUZ; STARS = new Set(b.stars || []); SAVE = b.save || null;
+      if (b.runs) { const ids = new Set(RUNS.map(r => r.id)); RUNS = RUNS.concat(b.runs.filter(r => !ids.has(r.id))); }   // run history: keep runs from both sides
       S.starter = b.starter || S.starter; S.gender = b.gender || S.gender; S.team = b.team || S.team;
       const put = (k, v) => { try { localStorage.setItem(G.store + "." + k, JSON.stringify(v)); } catch (e) {} };
-      put("nuz", NUZ); put("stars", [...STARS]); put("save", SAVE); put("starter", S.starter); put("gender", S.gender); put("team", S.team); put("updated", b.updated || Date.now());
+      put("nuz", NUZ); put("stars", [...STARS]); put("save", SAVE); put("starter", S.starter); put("gender", S.gender); put("team", S.team); put("runs", RUNS); put("updated", b.updated || Date.now());
     },
     async api(method, url, body) {
       const g = gist.get();
@@ -565,7 +633,7 @@
   };
 
   // ---------------------------------------------------------------- shell
-  const PAGES = { prep, run, box, dex, data, trainers, ai };
+  const PAGES = { prep, run, box, dex, data, trainers, ai, hist };
   async function show() {
     const page = (location.hash || "#prep").slice(1).split("/")[0];
     const fn = PAGES[page] || prep;
@@ -599,6 +667,10 @@
     if (t.dataset.show) { S.show = t.dataset.show; store.set("show", S.show); keep(); return; }
     if (t.dataset.dead) { const a = t.dataset.dead; NUZ.dead[a] ? delete NUZ.dead[a] : (NUZ.dead[a] = Date.now()); saveNuz(); keep(); return; }
     if (t.dataset.xdead) { const x = NUZ.extra[+t.dataset.xdead]; x.dead = !x.dead; saveNuz(); keep(); return; }
+    if (t.id === "histcur") { PEND = SAVE; keep(); return; }
+    if (t.id === "hcancel") { PEND = null; keep(); return; }
+    if (t.id === "hsave") { saveRun(); keep(); return; }
+    if (t.dataset.delrun) { if (confirm("Delete this run from your history?")) { RUNS = RUNS.filter(r => r.id !== t.dataset.delrun); store.set("runs", RUNS); keep(); } return; }
     if (t.id === "forget") { SAVE = null; store.set("save", null); keep(); return; }
     if (t.id === "bdown") { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(Sync.blob())], { type: "application/json" })); a.download = G.id + "-nuzlocke-backup.json"; a.click(); return; }
     if (t.id === "reset") { if (confirm("Clear this run's areas, deaths and extras? Your stars and save stay.")) { NUZ = { on: true, shiny: NUZ.shiny, areas: {}, dead: {}, extra: [] }; saveNuz(); keep(); } return; }
@@ -613,6 +685,7 @@
   document.addEventListener("change", ev => {
     const t = ev.target;
     if (t.id === "savefile" && t.files[0]) { readFile(t.files[0]).then(() => keep()).catch(e => alert("Couldn't read that save: " + e.message)); return; }
+    if (t.id === "histsave" && t.files[0]) { t.files[0].arrayBuffer().then(b => { PEND = readerFor().readSave(b, IDS, META); keep(); }).catch(e => alert("Couldn't read that save: " + e.message)); return; }
     if (t.id === "pcboxes") { S.boxes = t.checked; store.set("pcboxes", S.boxes); keep(); return; }
     if (t.id === "nzon") { NUZ.on = t.checked; saveNuz(); keep(); return; }
     if (t.id === "nzshiny") { NUZ.shiny = t.checked; saveNuz(); return; }
@@ -623,6 +696,7 @@
     if (t.id === "bup" && t.files[0]) { t.files[0].text().then(x => { Sync.apply(JSON.parse(x)); keep(); }).catch(e => alert("Couldn't read that backup: " + e.message)); }
   });
   // header: nav for this game, and the Normal / Challenge switch
+  if (!G.nav.some(([h]) => h === "#hist")) { const i = G.nav.findIndex(([h]) => h === "#data"); G.nav.splice(i < 0 ? G.nav.length : i, 0, ["#hist", "Run history"]); }
   $("#nav").innerHTML = G.nav.map(([h, t]) => `<a href="${h}"${/^https?:|calc\/|index\.html\?data=/.test(h) ? ' target="_blank" rel="noopener"' : ""}>${t}</a>`).join("");
   if (G.modes) {
     const mb = document.createElement("div"); mb.className = "modes"; mb.id = "modes";
