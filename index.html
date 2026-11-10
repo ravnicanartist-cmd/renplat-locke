@@ -26,7 +26,10 @@ if (/^#(prep|run|box|dex|data)/.test(location.hash)) location.replace("renplat/"
   const $ = s => document.querySelector(s);
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   // Emerald Rupture isn't part of the gauntlet: it has its own docs, calc and tracker (rupture/)
-  const OTHER = [{ name: "Emerald Rupture", note: "Your Gen 5 Emerald hack (2.9.1): docs with every trainer, Boss Prep, Nuzlocke tracker, damage calc (Normal, Hard, Rewind).",
+  const OTHER = [{ name: "SoulGold", note: "eemeliri's Johto hack (v1.2.1, not part of the gauntlet). Normal / Hard, Boss Prep incl. the any-order gyms 5–7, every trainer team by split, Nuzlocke areas, box, Pokédex, save reader, calc, enemy AI notes.",
+    links: [["soulgold/#prep", "Boss Prep"], ["soulgold/#trainers", "Trainers"], ["soulgold/#run", "Nuzlocke"], ["soulgold/#box", "Box"],
+            ["rupture/index.html?data=soulgold&gen=8&dmgGen=8&types=6&customPoks=1&noSwitch=1&evs=0", "Calc"], ["rupture/index.html?data=soulgold-hard&gen=8&dmgGen=8&types=6&customPoks=1&noSwitch=1&evs=0", "Calc (Hard)"]] },
+    { name: "Emerald Rupture", note: "Your Gen 5 Emerald hack (2.9.1): docs with every trainer, Boss Prep, Nuzlocke tracker, damage calc (Normal, Hard, Rewind).",
     links: [["rupture/docs/#prep", "Boss Prep"], ["rupture/docs/", "Docs"], ["rupture/nuzlocke/", "Nuzlocke tracker"], ["rupture/normal.html", "Calc"], ["rupture/hard.html", "Calc (Hard)"],
             ["rupture/rewind.html", "Calc (Rewind)"], ["rupture/rewind-hard.html", "Calc (Rewind Hard)"]] }];
   const GAMES = [

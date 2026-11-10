@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SoulGold Nuzlocke + Boss Prep</title>
+<meta name="description" content="Nuzlocke tracker, boss prep and every trainer team for Pokémon SoulGold v1.2.1 (eemeliri's Johto hack), Normal and Hard, with a save reader that runs in your browser.">
+<meta name="theme-color" content="#1b2433">
+<link rel="stylesheet" href="../shared/style.css?v=6">
+</head>
+<body>
+<header>
+  <div class="bar">
+    <a class="brand" href="../">SoulGold <span>Nuzlocke</span></a>
+    <nav id="nav"></nav>
+  </div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search this page" autocomplete="off">
+  </div>
+</header>
+<main id="main"><p class="muted">Loading…</p></main>
+<a id="top" href="#" onclick="scrollTo(0,0);return false" title="Back to top">↑</a>
+<script>
+window.GAME = {
+  id: "soulgold", store: "soulgold", gist: "soulgold-locke.json", v: 1, save: "sgx", modes: ["normal", "hard"],
+  sprites: "../rupture/img/pokesprite/",
+  calcByMode: { normal: "../rupture/index.html?data=soulgold&gen=8&dmgGen=8&types=6&customPoks=1&noSwitch=1&evs=0",
+                hard: "../rupture/index.html?data=soulgold-hard&gen=8&dmgGen=8&types=6&customPoks=1&noSwitch=1&evs=0" },
+  tabs: [["G", "Gyms & League"], ["V", "Rivals & Team Rocket"], ["A", "Everything, in story order"]],
+  starters: ["Grass starter", "Fire starter", "Water starter"],
+  badges: { falkner: "Zephyr", bugsy: "Hive", whitney: "Plain", morty: "Fog", clair: "Rising" },
+  badgeCount: { gym5: [["Storm", "Mineral", "Glacier"], 1], gym6: [["Storm", "Mineral", "Glacier"], 2], gym7: [["Storm", "Mineral", "Glacier"], 3] },
+  leaderBadge: { Chuck: "Storm", Jasmine: "Mineral", Pryce: "Glacier" },
+  championKey: "lance",
+  leaders: ["falkner", "bugsy", "whitney", "morty", "gym5", "gym6", "gym7", "clair", "lance"],
+  nav: [["#prep", "Boss Prep"], ["#trainers", "Trainers"], ["#run", "Nuzlocke"], ["#box", "Box"], ["#dex", "Pokédex"], ["#ai", "Enemy AI"],
+        ["#data", "Save &amp; sync"], ["../rupture/index.html?data=soulgold&gen=8&dmgGen=8&types=6&customPoks=1&noSwitch=1&evs=0", "Calc ↗"], ["https://eemeliri.github.io/soulgold/", "Official docs ↗"], ["../", "Hub"]],
+  dexIntro: "SoulGold v1.2.1 species data from the hack's own documentation: types, base stats, abilities (innates unlock after the main story, so they're left out), evolutions and where to find each one. The number is SoulGold's own Pokédex number.",
+  trainersNote: "Teams from the hack's v1.2.1 data. Hard mode swaps in its own teams for 87 trainers (every boss among them) and keeps the rest; gym battles are doubles on Hard. Trainers with no set moves are shown with their latest level-up moves.",
+  aiLabels: [["Smart AI", "Smart Trainer: also sees your moves, ability and item, switches out of bad matchups"], ["Basic AI", "Basic Trainer: avoids useless moves and goes for KOs with the best damaging move"]],
+  how: cap => `
+      <p><b>Your options.</b> Every species you can catch, be given or trade for by this fight (SoulGold v1.2.1 encounter tables: grass by time of day, Surf from the Morty split, the Old Rod from Route 32, the Good Rod from Olivine and the Super Rod from Blackthorn, Rock Smash from Route 36), plus the gifts and in-game trades. Chuck, Jasmine and Pryce can be done in any order, so everything around Olivine, Cianwood and Mahogany counts from the 5th gym on. The Gachapon starters, Hidden Grottos, legendaries and the Achievement rewards aren't counted. Wild levels aren't used as a limit (the hack can scale them). Each is evolved as far as it can go by the level cap (${cap} here, SoulGold's own cap); evolution items count once they can be found.</p>
+      <p><b>Moves.</b> Level-up moves up to the cap and TMs from when you can pick them up (gym TMs after the gym, Goldenrod Dept. Store and Game Corner TMs from Goldenrod). The tutor and egg move masters aren't counted. Abilities: first regular ability (innates are post-game).</p>
+      <p><b>Type chart.</b> The modern chart with Fairy (no type changes in the main game).</p>`,
+  ai: `<h2>Enemy AI</h2>
+    <p>SoulGold uses pokeemerald-expansion's AI. Every trainer has one of two settings, shown on the Trainers page:</p>
+    <ul><li><b>Basic Trainer</b> (most route trainers): skips moves that would fail or do nothing, goes for the KO when it can, and otherwise scores its moves to pick the most useful one. It doesn't know your moves or item.</li>
+      <li><b>Smart Trainer</b> (gym leaders, Elite Four, Lance, the Rocket executives, rivals and a lot of the stronger trainers): everything above, plus it <b>knows your moves, ability and held item</b>, switches out of bad matchups and picks better switch-ins, and won't get PP-stalled.</li></ul>
+    <p><b>Hard mode</b>: gym battles are double battles, 87 trainers get their own harder teams, and trainers with no set moves pick slightly smarter movesets for the point in the story. Boss Prep matchups are still worked out 1-on-1, so treat doubles fights with extra care.</p>
+    <p>Level caps (FAQ): 12, 19, 26, 34, 42, 45, 48, 55 (Rocket takeover), 58, 62 (until you catch Ho-Oh or Lugia) and 70 (until you become Champion). Your save's cap setting (off / soft / hard) and the difficulty are read with the save.</p>`
+};
+</script>
+<script src="../shared/model.js?v=2"></script>
+<script src="../shared/savereader_sgx.js?v=1"></script>
+<script src="../shared/app.js?v=6"></script>
+</body>
+</html>

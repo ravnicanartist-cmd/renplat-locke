@@ -1199,6 +1199,8 @@ $(document).ready(function() {
    "rupture-hard": "Emerald Rupture 2.9 Hard",
    "rupture-rewind": "Emerald Rupture 2.9 Rewind Normal",
    "rupture-rewind-hard": "Emerald Rupture 2.9 Rewind Hard",
+   "soulgold": "SoulGold 1.2.1 Normal",
+   "soulgold-hard": "SoulGold 1.2.1 Hard",
    "68bfb2ccba14b7f6b1f0": "Inclement Emerald",
    "e9030beba9c1ba8804e8": "Kaizo Colloseum",
    "6875151cfa5eea00eafa": "Inclement Emerald No EVs",

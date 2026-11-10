@@ -17,6 +17,8 @@ backupFiles = {
 	"Emerald Rupture 2.9 Hard": "rupture-hard",
 	"Emerald Rupture 2.9 Rewind Normal": "rupture-rewind",
 	"Emerald Rupture 2.9 Rewind Hard": "rupture-rewind-hard",
+	"SoulGold 1.2.1 Normal": "soulgold",
+	"SoulGold 1.2.1 Hard": "soulgold-hard",
 	"Inclement Emerald": "inc",
 	"Inclement Emerald No EVs": "inc-noev",
 	"Sterling Silver 1.16": "ster",

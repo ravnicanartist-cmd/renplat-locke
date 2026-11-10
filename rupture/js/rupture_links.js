@@ -16,7 +16,7 @@
     }, 100);
     function setMine() {
         var q = new URLSearchParams(location.search), me = q.get('me');
-        if (!me || !setdex[me]) return;
+        if (!me || !(setdex[me] || (typeof pokedex !== 'undefined' && pokedex[me]))) return;
         setTimeout(function () {
             var id = me + ' (Blank Set)', p1 = $('#p1');
             p1.find('.set-selector').val(id).change();

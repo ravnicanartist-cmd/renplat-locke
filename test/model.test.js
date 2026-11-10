@@ -1,6 +1,6 @@
 // node test/model.test.js [renplat|bb2r] : recomputes every cell of every fight with the JavaScript model and compares it with Python's
 const fs = require("fs"), path = require("path");
-const games = process.argv[2] ? [process.argv[2]] : ["renplat", "bb2r", "sg"];
+const games = process.argv[2] ? [process.argv[2]] : ["renplat", "bb2r", "sg", "soulgold"];
 let total = 0, bad = 0;
 for (const g of games) {
   const D = path.join(__dirname, "..", g, "data");

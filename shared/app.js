@@ -42,10 +42,14 @@
     "Kyurem-White": "kyurem-white", "Kyurem-Black": "kyurem-black", "Keldeo-Resolute": "keldeo-resolute", "Tornadus-Therian": "tornadus-therian",
     "Thundurus-Therian": "thundurus-therian", "Landorus-Therian": "landorus-therian", "Castform-Sunny": "castform-sunny", "Castform-Rainy": "castform-rainy", "Castform-Snowy": "castform-snowy" };
   const slug = n => FORMSLUG[n] || String(n).toLowerCase().replace(/-f$/, "f").replace(/-m$/, "m").replace(/[^a-z0-9]/g, "");
-  const spr = (n, cls = "") => `<img class="${cls}" loading="lazy" alt="" src="https://play.pokemonshowdown.com/sprites/gen5/${slug(n)}.png" onerror="this.style.visibility='hidden'">`;
+  // G.sprites: a folder of sprites named like the calc's (SoulGold has Pokémon from every generation; the Gen 5 set stops at Genesect)
+  const rslug = n => String(n).toLowerCase().replace(" ", "-").replace(".", "").replace(".", "").replace("’", "").replace(":", "-");
+  const spr = (n, cls = "") => G.sprites
+    ? `<img class="${cls}" loading="lazy" alt="" src="${G.sprites}${encodeURIComponent((META && META.mons[n] && META.mons[n].sp) || rslug(n))}.png" onerror="this.style.visibility='hidden'">`
+    : `<img class="${cls}" loading="lazy" alt="" src="https://play.pokemonshowdown.com/sprites/gen5/${slug(n)}.png" onerror="this.style.visibility='hidden'">`;
   const fam = n => (META.mons[n] || {}).fam || n;
   const fightIdx = k => META.order[k];
-  const CALC = G.calc + (G.modes && S.mode === "challenge" ? "&challengeMode=true" : "");
+  const CALC = (G.calcByMode ? G.calcByMode[S.mode] || Object.values(G.calcByMode)[0] : G.calc) + (G.modes && S.mode === "challenge" ? "&challengeMode=true" : "");
   const calcName = n => String(n).replace(/'/g, "\u2019");
   const calcLink = (opp, me, lv, mv, txt, olv) => opp ? `<a class="calc" target="_blank" rel="noopener" href="${CALC}&opp=${encodeURIComponent(opp)}${olv ? "&olv=" + olv : ""}${me ? `&me=${encodeURIComponent(calcName(me))}&lv=${lv}&mv=${encodeURIComponent(mv.join(","))}` : ""}">${txt || "Calc"}</a>` : "";
   // moves and abilities: type / category / power at a glance, the rest in a tooltip (hover, or tap on a phone)
@@ -143,7 +147,9 @@
     const BADGE = G.badges || {};
     META.fights.forEach((f, i) => {
       // Renegade Platinum: flags 1360+1064 / 1360+1065 (Cheryl, Mira) are shared with other game flags, so those two are inferred
-      const hit = (f.ids || []).some(id => id !== 1064 && id !== 1065 && (SAVE.beaten || []).includes(id)) || (BADGE[f.key] && SAVE.badges.includes(BADGE[f.key]));
+      const bc = (G.badgeCount || {})[f.key];   // SoulGold gyms 5-7: beaten once you have that many of their badges
+      const hit = (f.ids || []).some(id => id !== 1064 && id !== 1065 && (SAVE.beaten || []).includes(id)) || (BADGE[f.key] && SAVE.badges.includes(BADGE[f.key]))
+        || (bc && bc[0].filter(b => SAVE.badges.includes(b)).length >= bc[1]) || (f.key === G.championKey && SAVE.champion);
       if (hit) mx = Math.max(mx, i);
     });
     return mx;
@@ -158,12 +164,19 @@
       if (v.starter && S.starter) s += v.starter === S.starter ? 4 : -9;
       if (v.gender && S.gender) s += v.gender === S.gender ? 2 : -9;
       if (v.team) s += v.team === (S.team[key] || 1) ? 1 : -9;
+      if (v.leader) s += v.leader === (S.team[key] || autoLeader(vars)) ? 1 : -9;
       if (s > bs) { bs = s; best = i; }
     });
     return best;
   }
+  // SoulGold gyms 5-7: Chuck, Jasmine and Pryce in any order. Default to a leader whose badge you don't have yet.
+  function autoLeader(vars) {
+    const L = vars.map(v => v.leader), B = G.leaderBadge || {};
+    return (SAVE && L.find(l => !SAVE.badges.includes(B[l]))) || L[0];
+  }
   function chips(key, vars) {
     let h = "";
+    if (vars.some(v => v.leader)) h += `<span class="muted">Leader:</span>` + vars.map(v => v.leader).map(l => `<button data-leader="${l}" data-key="${key}" class="${(S.team[key] || autoLeader(vars)) === l ? "on" : ""}">${l}${SAVE && SAVE.badges.includes((G.leaderBadge || {})[l]) ? " ✓" : ""}</button>`).join("");
     if (vars.some(v => v.starter)) h += `<span class="muted">Your starter:</span>` + STARTERS.map(s => `<button data-starter="${s}" class="${S.starter === s ? "on" : ""}">${s}</button>`).join("");
     if (vars.some(v => v.gender)) h += `<span class="muted">&nbsp;You play as:</span>` + (G.genders || [["M", "a boy"], ["F", "a girl"]]).map(([g, t]) => `<button data-gender="${g}" class="${S.gender === g ? "on" : ""}">${t}</button>`).join("");
     if (vars.some(v => v.team)) h += `<span class="muted">Team (picked at random by the game):</span>` + [1, 2, 3, 4].map(n => `<button data-team="${n}" data-key="${key}" class="${(S.team[key] || 1) === n ? "on" : ""}">Team ${n}</button>`).join("");
@@ -175,20 +188,22 @@
     const inp = `<input type="file" id="savefile" accept=".sav,.dsv,.bin,application/octet-stream">`;
     if (!SAVE) return `<div class="savebar"><label class="savebtn">Read your save (.sav)${inp}</label>
       <span class="muted">Loads your party, PC boxes, badges, ${G.save === "pt" ? "beaten trainers, " : ""}starter and Pokédex, then jumps to your next fight. It's read in your browser; with sync on, the result is kept in your private gist.</span></div>`;
-    return `<div class="savebar on"><b>${esc(SAVE.name || "Your save")}</b><span>${SAVE.gender === "F" ? "Girl" : "Boy"} · ${SAVE.badges.length} badge${SAVE.badges.length === 1 ? "" : "s"}${SAVE.starter ? " · starter " + esc(SAVE.starter) : ""} · ${SAVE.hours}h ${String(SAVE.minutes).padStart(2, "0")}m</span>
+    return `<div class="savebar on"><b>${esc(SAVE.name || "Your save")}</b><span>${SAVE.gender === "F" ? "Girl" : "Boy"} · ${SAVE.badges.length} badge${SAVE.badges.length === 1 ? "" : "s"}${SAVE.starter ? " · starter " + esc(SAVE.starterMon || SAVE.starter) : ""} · ${SAVE.hours}h ${String(SAVE.minutes).padStart(2, "0")}m</span>
       <span class="muted">${SAVE.party.length} in party, ${SAVE.boxes.length} in the PC · read ${esc(new Date(SAVE.read).toLocaleString())}</span>
       <label class="savebtn small">Read again${inp}</label><button class="savebtn small" id="forget">Forget</button></div>`;
   }
   async function readFile(file) {
     const buf = await file.arrayBuffer();
     const prev = SAVE;
-    SAVE = ({ b2w2: window.SaveReaderB2W2, hgss: window.SaveReaderHGSS }[G.save] || window.SaveReader).readSave(buf, IDS, META);
+    SAVE = ({ b2w2: window.SaveReaderB2W2, hgss: window.SaveReaderHGSS, sgx: window.SaveReaderSGX }[G.save] || window.SaveReader).readSave(buf, IDS, META);
     store.set("save", SAVE);
     S.gender = SAVE.gender; store.set("gender", S.gender);
     const st = SAVE.starter || STARTERS.find(s => SAVE.party.concat(SAVE.boxes).some(m => fam(m.name) === s));
     if (st) { S.starter = st; store.set("starter", st); }
     S.sel = {}; store.set("sel", S.sel);
     autoFill(prev);
+    // games with a difficulty setting stored in the save (SoulGold): follow it
+    if (G.modes && SAVE.mode && G.modes.includes(SAVE.mode) && SAVE.mode !== S.mode) { store.set("mode", SAVE.mode); location.reload(); }
   }
   // Nuzlocke: fill areas from where your Pokémon were met; starters and gifts are free extras
   function autoFill(prev) {
@@ -198,11 +213,11 @@
       const o = ["gift", "egg", "fossil", "trade", "static"].includes(how) ? giftAt : wildAt;
       (o[a.name] = o[a.name] || new Set()).add(fam(s));
     }));
-    const starterFam = SAVE.starter ? fam(SAVE.starter) : null;
+    const starterFam = SAVE.starterMon ? fam(SAVE.starterMon) : SAVE.starter ? fam(SAVE.starter) : null;
     SAVE.party.concat(SAVE.boxes).forEach(m => {
       const f = fam(m.name), a = (G.metAlias || {})[m.met] || m.met;
       if (!a || !META.areas.some(x => x.name === a)) return;
-      if (f === starterFam) return;
+      if (f === starterFam) { if (!(NUZ.extra || []).some(x => fam(x.s) === f)) (NUZ.extra = NUZ.extra || []).push({ s: m.name, where: "Starter", auto: 1 }); return; }
       const wild = wildAt[a] && wildAt[a].has(f), gift = giftAt[a] && giftAt[a].has(f);
       if (gift && !wild) { if (!(NUZ.extra || []).some(x => fam(x.s) === f)) (NUZ.extra = NUZ.extra || []).push({ s: m.name, where: a, auto: 1 }); return; }
       if (m.shiny && NUZ.shiny) { if (!(NUZ.extra || []).some(x => x.pid === m.pid)) (NUZ.extra = NUZ.extra || []).push({ s: m.name, where: a + " (shiny)", pid: m.pid, auto: 1 }); return; }
@@ -218,7 +233,7 @@
     const d = META.mons[m.s];
     return `<div class="mon">${spr(m.s)}<div class="nm">${esc(m.s)} <span class="muted">Lv ${m.l}</span></div>
       <div class="sub">${d ? d.t.map(type).join("") : ""}</div>
-      <div class="sub">${ab(m.a)} · ${esc(m.n)}${m.i ? " · @ " + esc(m.i) : ""} · IVs ${m.iv}</div>
+      <div class="sub">${ab(m.a)}${m.n ? " · " + esc(m.n) : ""}${m.i ? " · @ " + esc(m.i) : ""} · IVs ${m.iv}</div>
       ${mvs(m.m)}${extra || ""}${calcLink(m.calc, null, 0, [], "Open in the calc", m.l)}</div>`;
   }
   const cellHtml = c => `<td class="mu ${c[0] ? "w" : "l"}"><a>${c[0] ? "✓" : "✗"}</a><span>${esc(c[1] || "—")} ${c[1] ? c[2] + "–" + c[3] + "%" : ""}</span>
@@ -365,11 +380,11 @@
       g.areas.forEach(a => {
         // one entry per species and method; times of day (morning / day / night) are merged into one label
         const byKey = new Map();
-        a.mons.forEach(m => { const base = m[2].replace(/ \((morning|day|night)\)$/, ""), t = (/\((morning|day|night)\)$/.exec(m[2]) || [])[1], k = m[0] + "|" + base;
+        a.mons.forEach(m => { const base = m[2].replace(/ \((morning|day|evening|night)\)$/, ""), t = (/\((morning|day|evening|night)\)$/.exec(m[2]) || [])[1], k = m[0] + "|" + base;
           const e = byKey.get(k) || byKey.set(k, [m[0], m[1], base, m[3], m[4], new Set()]).get(k); if (t) e[5].add(t); });
         const mons = [...byKey.values()].map(e => [e[0], e[1], e[5].size && e[5].size < 3 ? `${e[2]} (${[...e[5]].join(", ")})` : e[2], e[3], e[4]]);
         const r = NUZ.areas[a.name] || {}, wild = mons.filter(m => !["gift", "egg", "fossil", "trade", "static"].includes(m[2])), gifts = mons.filter(m => !wild.includes(m));
-        const specs = [...new Set(wild.map(m => m[0]))];
+        const specs = [...new Set(wild.map(m => m[0]).concat(r.st === "caught" && r.s ? [r.s] : []))];   // an evolved catch from the save stays selectable
         const opts = specs.map(s => `<option value="${esc(s)}" ${r.s === s ? "selected" : ""}>${esc(s)}${CURSED.has(fam(s)) && r.s !== s ? " (cursed)" : CAUGHT.has(fam(s)) && r.s !== s ? " (dupe)" : ""}</option>`).join("");
         const isDead = NUZ.dead[a.name];
         h += `<div class="area ${r.st === "caught" ? (isDead ? "dead" : "used") : r.st ? "fail" : ""}" data-text="${esc((a.name + " " + specs.join(" ")).toLowerCase())}">
@@ -403,11 +418,12 @@
     let loc = null;
     list.forEach(t => {
       const pick = (t.notes || []).map(n => /If you chose (\w+)/.exec(n)).find(Boolean);
-      if (pick && mine && pick[1] !== mine) return;           // rival teams for the other starters
+      if (pick && mine && !mine.startsWith(pick[1])) return;   // rival teams for the other starters
       if (t.loc !== loc) { loc = t.loc; h += `<h3 class="sec tloc">${esc(loc)}</h3>`; }
       const tags = (t.mand ? '<span class="tag over">Must fight</span>' : '<span class="tag">Optional</span>') + (t.partner ? '<span class="tag dbl">Your partner</span>' : "")
         + (t.ai & 128 ? '<span class="tag dbl">Double battle</span>' : "")
-        + (t.ai == null ? "" : (t.ai & 6) === 6 ? '<a class="tag ai" href="#ai" title="AI flags 1 + 2: looks for KOs and plays around your team">Smart AI</a>'
+        + (t.ai == null ? "" : G.aiLabels ? ((t.ai & 6) === 6 ? `<a class="tag ai" href="#ai" title="${G.aiLabels[0][1]}">${G.aiLabels[0][0]}</a>` : `<a class="tag" href="#ai" title="${G.aiLabels[1][1]}">${G.aiLabels[1][0]}</a>`)
+          : (t.ai & 6) === 6 ? '<a class="tag ai" href="#ai" title="AI flags 1 + 2: looks for KOs and plays around your team">Smart AI</a>'
           : t.ai & 6 ? '<a class="tag ai" href="#ai">Partly smart AI</a>' : '<a class="tag" href="#ai" title="Picks any move that has an effect">Basic AI</a>');
       h += `<div class="trainer ${t.mand ? "mand" : ""} ${t.partner ? "partner" : ""}" data-text="${esc((t.name + " " + t.loc + " " + t.team.map(m => m.s + " " + m.m.join(" ")).join(" ")).toLowerCase())}">
         <div class="th"><b>${esc(t.name)}</b>${tags}${(t.notes || []).length ? ` <span class="muted">${esc(t.notes.join(" · "))}</span>` : ""}</div>
@@ -579,6 +595,7 @@
     if (t.dataset.starter) { S.starter = t.dataset.starter; store.set("starter", S.starter); keep(); return; }
     if (t.dataset.gender) { S.gender = t.dataset.gender; store.set("gender", S.gender); keep(); return; }
     if (t.dataset.team) { S.team[t.dataset.key] = +t.dataset.team; store.set("team", S.team); keep(); return; }
+    if (t.dataset.leader) { S.team[t.dataset.key] = t.dataset.leader; store.set("team", S.team); keep(); return; }
     if (t.dataset.show) { S.show = t.dataset.show; store.set("show", S.show); keep(); return; }
     if (t.dataset.dead) { const a = t.dataset.dead; NUZ.dead[a] ? delete NUZ.dead[a] : (NUZ.dead[a] = Date.now()); saveNuz(); keep(); return; }
     if (t.dataset.xdead) { const x = NUZ.extra[+t.dataset.xdead]; x.dead = !x.dead; saveNuz(); keep(); return; }
@@ -606,7 +623,7 @@
     if (t.id === "bup" && t.files[0]) { t.files[0].text().then(x => { Sync.apply(JSON.parse(x)); keep(); }).catch(e => alert("Couldn't read that backup: " + e.message)); }
   });
   // header: nav for this game, and the Normal / Challenge switch
-  $("#nav").innerHTML = G.nav.map(([h, t]) => `<a href="${h}"${/^https?:|calc\//.test(h) ? ' target="_blank" rel="noopener"' : ""}>${t}</a>`).join("");
+  $("#nav").innerHTML = G.nav.map(([h, t]) => `<a href="${h}"${/^https?:|calc\/|index\.html\?data=/.test(h) ? ' target="_blank" rel="noopener"' : ""}>${t}</a>`).join("");
   if (G.modes) {
     const mb = document.createElement("div"); mb.className = "modes"; mb.id = "modes";
     mb.innerHTML = `<span class="muted">Difficulty:</span>` + G.modes.map(m => `<button data-mode="${m}" class="${S.mode === m ? "on" : ""}">${m[0].toUpperCase() + m.slice(1)}</button>`).join("");
