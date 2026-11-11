@@ -90,7 +90,7 @@ ABKEY = {KEY(a): a for a in ABN.values()}
 SPLITS = ["Falkner", "Bugsy", "Whitney", "Morty", "Gym 5", "Gym 6", "Gym 7", "Rocket takeover", "Clair", "Ho-Oh / Lugia", "Elite Four", "Post-game"]
 CAPS = [12, 19, 26, 34, 42, 45, 48, 55, 58, 62, 70, 100]
 POST = 11
-SURF, ROCKSMASH, OLD, GOOD, SUPER = 4, 3, 1, 4, 8
+SURF, ROCKSMASH, OLD, GOOD, SUPER = 4, 1, 1, 4, 8   # Rock Smash: HM on Route 36, usable in the field with the Zephyr Badge
 GYMDONE = [(r"Violet City Gym", 1), (r"Azalea Town Gym", 2), (r"Goldenrod City Gym", 3), (r"Ecruteak City Gym", 4),
            (r"(Olivine City|Cianwood|Mahogany Town) Gym", 7), (r"Blackthorn City Gym", 9)]
 LOCS = [
@@ -112,7 +112,7 @@ def loc_stage(loc, src=""):
     s = f"{loc} {src}"
     if re.search(r"postgame|post-game|achievement|trophy|Hidden Grotto|Wild held|Battle Cafe|Title Defense", s, re.I): return 99
     if re.search(r"after 4 badges|after 4th badge", s, re.I): return 4
-    if re.search(r"Sprout Tower Basement|Deep Ilex|New Bark Town House 3|Puzzle And Reward Chambers", s): return 99    # behind later events (Dive is post-game; the Ruins of Alph chambers open later, per Carlos)
+    if re.search(r"Sprout Tower Basement|Deep Ilex|New Bark Town House 3|Puzzle And Reward Chambers|New Bark Town Lab Gift|Dark Cave South Side Item ball", s): return 99    # behind later events (Dive is post-game; the Ruins of Alph chambers open later, per Carlos; so are the early Shiny / Dusk Stones)
     m = re.match(r"Gate (?:Goldenrod City )?(Route \d+)", loc)
     if m: loc = m.group(1)
     if re.search(r"After Rocket Hideout", s, re.I): return 7
