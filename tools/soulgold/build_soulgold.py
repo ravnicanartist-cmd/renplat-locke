@@ -179,7 +179,7 @@ GIFTS = [(["Rattata-Alola", "Zigzagoon-Galar"], "Cherrygrove City (choose one)",
          (["Pawmi"], "Violet City trade (for Cottonee)", "trade", 0, "Violet City"),
          (["Slowpoke-Galar"], "Azalea Town trade (for Slowpoke)", "trade", 1, "Azalea Town"),
          (["Bagon", "Gible", "Feebas", "Riolu", "Jangmo-o", "Zorua-Hisui", "Goomy"], "Odd Egg after the 1st gym (one of these)", "egg", 1, "Violet City"),
-         (["Kabuto", "Aerodactyl", "Lileep", "Archen", "Tyrunt", "Amaura"], "Ruins of Alph fossils (smash rocks)", "fossil", 1, "Ruins of Alph"),
+         (["Kabuto", "Aerodactyl", "Lileep", "Archen", "Tyrunt", "Amaura"], "Fossil from a Ruins of Alph rock, revived at the lab (Carlos's rule: one per run)", "revive", 1, "Fossil revival (1 per run)"),
          (["Honedge"], "Goldenrod Dept. Store trade (for Clefairy)", "trade", 2, "Goldenrod City"),
          (["Eevee-Starter", "Pikachu-Starter"], "Bill in Ecruteak (choose one)", "gift", 3, "Ecruteak City"),
          (["Gimmighoul"], "Cianwood City house", "gift", 4, "Cianwood City"),
@@ -438,7 +438,7 @@ def main():
     # ---- Nuzlocke areas
     areas = collections.OrderedDict()
     for sp, an, how, gate, mlv, loc in sorted(SOURCES, key=lambda s: s[3]):
-        a = areas.setdefault(loc, {"name": loc, "gate": gate, "split": SPLITS[min(gate, POST)], "mons": []})
+        a = areas.setdefault(loc, {"name": loc, "gate": gate, "split": SPLITS[min(gate, POST)], "mons": [], **({"met": "Ruins of Alph"} if loc.startswith("Fossil revival") else {})})
         a["gate"] = min(a["gate"], gate)
         a["mons"].append([sp, an, how, gate, mlv])
     for a in areas.values(): a["split"] = SPLITS[min(a["gate"], POST)]

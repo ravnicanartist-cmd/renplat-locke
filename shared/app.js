@@ -217,7 +217,11 @@
     }));
     const starterFam = SAVE.starterMon ? fam(SAVE.starterMon) : SAVE.starter ? fam(SAVE.starter) : null;
     SAVE.party.concat(SAVE.boxes).forEach(m => {
-      const f = fam(m.name), a = (G.metAlias || {})[m.met] || m.met;
+      const f = fam(m.name);
+      let a = (G.metAlias || {})[m.met] || m.met;
+      // an area that shares its met location with another (SoulGold: fossils revived at the Ruins of Alph lab)
+      const sub = META.areas.find(x => x.met === a && x.mons.some(mm => fam(mm[0]) === f));
+      if (sub) a = sub.name;
       if (!a || !META.areas.some(x => x.name === a)) return;
       if (f === starterFam) { if (!(NUZ.extra || []).some(x => fam(x.s) === f)) (NUZ.extra = NUZ.extra || []).push({ s: m.name, where: "Starter", auto: 1 }); return; }
       const wild = wildAt[a] && wildAt[a].has(f), gift = giftAt[a] && giftAt[a].has(f);
