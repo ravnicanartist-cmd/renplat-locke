@@ -176,7 +176,8 @@ for e in J("encounters.json"):
 for (n, where, how), r in ENC.items():
     if how == "grass" and len(r["t"]) == 1 and next(iter(r["t"])): how = f"grass ({next(iter(r['t']))})"
     SOURCES.append((n, where, how, r["g"], r["lv"], r["area"]))
-GIFTS = [(["Rattata-Alola", "Zigzagoon-Galar"], "Cherrygrove City (choose one)", "gift", 0, "Cherrygrove City"),
+GIFTS = [(["Togepi"], "Togepi egg from Elm's aide (Violet City)", "egg", 0, "Violet City"),
+         (["Rattata-Alola", "Zigzagoon-Galar"], "Cherrygrove City (choose one)", "gift", 0, "Cherrygrove City"),
          (["Pawmi"], "Violet City trade (for Cottonee)", "trade", 0, "Violet City"),
          (["Slowpoke-Galar"], "Azalea Town trade (for Slowpoke)", "trade", 1, "Azalea Town"),
          (["Bagon", "Gible", "Feebas", "Riolu", "Jangmo-o", "Zorua-Hisui", "Goomy"], "Odd Egg after the 1st gym (one of these)", "egg", 1, "Violet City"),
