@@ -180,7 +180,7 @@ GIFTS = [(["Togepi"], "Togepi egg from Elm's aide (Violet City)", "egg", 0, "Vio
          (["Rattata-Alola", "Zigzagoon-Galar"], "Cherrygrove City (choose one)", "gift", 0, "Cherrygrove City"),
          (["Pawmi"], "Violet City trade (for Cottonee)", "trade", 0, "Violet City"),
          (["Slowpoke-Galar"], "Azalea Town trade (for Slowpoke)", "trade", 1, "Azalea Town"),
-         (["Bagon", "Gible", "Feebas", "Riolu", "Jangmo-o", "Zorua-Hisui", "Goomy"], "Odd Egg after the 1st gym (one of these)", "egg", 1, "Violet City"),
+         (["Bagon", "Gible", "Feebas", "Riolu", "Jangmo-o", "Zorua-Hisui", "Goomy"], "Odd Egg on Route 34: prize for beating Crystal/Gold, or from the Day Care son (one per game)", "egg", 2, "Route 34"),
          (["Kabuto", "Aerodactyl", "Lileep", "Archen", "Tyrunt", "Amaura"], "Fossil from a Ruins of Alph rock, revived at the lab (Carlos's rule: one per run)", "revive", 1, "Fossil revival (1 per run)"),
          (["Honedge"], "Goldenrod Dept. Store trade (for Clefairy)", "trade", 2, "Goldenrod City"),
          (["Eevee-Starter", "Pikachu-Starter"], "Bill in Ecruteak (choose one)", "gift", 3, "Ecruteak City"),
