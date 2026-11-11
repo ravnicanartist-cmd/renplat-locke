@@ -140,6 +140,12 @@
     const free = r.areas.filter(a => !NUZ.areas[a]);
     return free.length ? ["nz-free", "Catch: " + free.join(", ")] : ["nz-used", "Areas used"];
   }
+  // where to get it, places in Nuzlocke areas you haven't used yet first
+  function whereShort(r) {
+    const used = w => NUZ.on && Object.keys(NUZ.areas).some(a => NUZ.areas[a] && NUZ.areas[a].s && w.startsWith(a));
+    const l = r.where.slice().sort((x, y) => used(x) - used(y));
+    return l.slice(0, 2).join("; ").replace(/\(grass \((day|night|morning)\)\)/g, "(grass, $1)") + (l.length > 2 ? ` +${l.length - 2} more` : "");
+  }
   const catchable = r => { const t = nuzTag(r); return t && (t[0] === "nz-free" || t[0] === "nz-gift"); };
 
   // ---------------------------------------------------------------- fights beaten (from the save)
@@ -331,7 +337,7 @@
       h += `<tr class="pr" data-i="${i}" data-text="${esc((r.s + " " + r.from.join(" ") + " " + r.where.join(" ")).toLowerCase())}">
         <td><button class="star ${on ? "on" : ""}" data-f="${esc(fam(r.s))}" title="I have this one">${on ? "★" : "☆"}</button></td>
         <td class="pk">${spr(r.s)}<div><b>${esc(r.s)}</b> ${META.mons[r.s].t.map(type).join("")}${newSet.has(i) ? '<span class="tag new">New</span>' : ""}${t ? `<span class="tag ${t[0]}">${esc(t[1])}</span>` : ""}
-        <br><span class="muted">${r.s !== r.from[0] || r.from.length > 1 ? "from " + esc(r.from.join(" / ")) + " · " : ""}${esc(r.where.slice(0, 2).join("; "))}</span></div></td>
+        <br><span class="muted">${r.s !== r.from[0] || r.from.length > 1 ? "from " + esc(r.from.join(" / ")) + " · " : ""}${esc(whereShort(r))}</span></div></td>
         <td class="n"><b>${winsOf(i)}</b>/${team.length}</td>${cols.map(c => cellHtml(d.grid[i][c])).join("")}</tr>`;
     });
     if (!shown.length) h += `<tr><td colspan="${3 + team.length}" class="muted">Nothing to show with this filter.</td></tr>`;
