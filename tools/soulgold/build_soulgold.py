@@ -112,7 +112,8 @@ def loc_stage(loc, src=""):
     s = f"{loc} {src}"
     if re.search(r"postgame|post-game|achievement|trophy|Hidden Grotto|Wild held|Battle Cafe|Title Defense", s, re.I): return 99
     if re.search(r"after 4 badges|after 4th badge", s, re.I): return 4
-    if re.search(r"Sprout Tower Basement|Deep Ilex|New Bark Town House 3|Puzzle And Reward Chambers|New Bark Town Lab Gift|Dark Cave South Side Item ball", s): return 99    # behind later events (Dive is post-game; the Ruins of Alph chambers open later, per Carlos; so are the early Shiny / Dusk Stones)
+    if re.search(r"Sprout Tower Basement|Deep Ilex|New Bark Town House 3|Puzzle And Reward Chambers|Dark Cave South Side Item ball", s): return 99    # behind later events (Dive is post-game; the Ruins of Alph chambers open later, per Carlos; so are the early Shiny / Dusk Stones)
+    if re.search(r"New Bark Town Lab Gift", s): return 1      # Elm gives the Shiny Stone once the Togepi egg hatches (Carlos got it with 1 badge)
     m = re.match(r"Gate (?:Goldenrod City )?(Route \d+)", loc)
     if m: loc = m.group(1)
     if re.search(r"After Rocket Hideout", s, re.I): return 7
