@@ -18,9 +18,11 @@
         var q = new URLSearchParams(location.search), me = q.get('me');
         if (!me || !(setdex[me] || (typeof pokedex !== 'undefined' && pokedex[me]))) return;
         setTimeout(function () {
-            var id = me + ' (Blank Set)', p1 = $('#p1');
+            var box = setdex[me] && setdex[me]['My Box'];   // your own Pokémon from the save: keep its real level, IVs and moves
+            var id = me + (box ? ' (My Box)' : ' (Blank Set)'), p1 = $('#p1');
             p1.find('.set-selector').val(id).change();
             p1.find('.select2-chosen').first().text(id);
+            if (box) return;
             if (q.get('lv')) p1.find('.level').val(q.get('lv'));
             p1.find('.ivs').val(15);
             (q.get('mv') || '').split(',').slice(0, 4).forEach(function (m, i) {

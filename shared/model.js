@@ -41,13 +41,16 @@
       return base * 0.925 * stab * e * item * (META.multi[move] || 1);
     }
     // like Python's max() over (damage, move): ties go to the later name
-    const best = (a, d, intim) => a.moves.reduce((b, m) => {
+    // left out on the player's side: must recharge, Last Resort, moves that faint the user
+    const NOUSE = new Set(["Hyper Beam", "Giga Impact", "Blast Burn", "Frenzy Plant", "Hydro Cannon", "Rock Wrecker", "Roar of Time", "Prismatic Laser",
+      "Eternabeam", "Meteor Assault", "Last Resort", "Explosion", "Self-Destruct", "Selfdestruct", "Misty Explosion", "Final Gambit", "Memento"]);
+    const best = (a, d, intim, skip) => a.moves.filter(m => !skip || !skip.has(m)).reduce((b, m) => {
       const x = damage(a, d, m, intim);
       return !b[1] || x > b[0] || (x === b[0] && m > b[1]) ? [x, m] : b;
     }, [0, null]);
     const pyround = x => { const f = Math.floor(x), r = x - f; return r > 0.5 ? f + 1 : r < 0.5 ? f : (f % 2 ? f + 1 : f); };
     function matchup(p, b) {
-      const [pd, pm] = best(p, b, b.ab === "Intimidate"), [bd, bm] = best(b, p, p.ab === "Intimidate");
+      const [pd, pm] = best(p, b, b.ab === "Intimidate", NOUSE), [bd, bm] = best(b, p, p.ab === "Intimidate");
       const first = p.st.sp >= b.st.sp;
       let win = false;
       if (pd > 0) {

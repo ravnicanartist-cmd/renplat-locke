@@ -229,7 +229,7 @@ def learnable(n, path, stage, cap):
         if l <= cap: mv.add(m)
     for m in MONS[n]["tm"]:
         if TM_BY_MOVE.get(m, 99) <= stage: mv.add(m)
-    mv.discard("Frustration"); mv.discard("Last Resort")
+    mv.discard("Frustration"); mv -= MD.NOUSE   # NOUSE: recharge moves, Last Resort, moves that faint the user
     return mv
 def damaging(m):
     d = MOVES.get(m)
