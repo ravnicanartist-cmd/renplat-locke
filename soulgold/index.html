@@ -22,7 +22,7 @@
 <a id="top" href="#" onclick="scrollTo(0,0);return false" title="Back to top">↑</a>
 <script>
 window.GAME = {
-  id: "soulgold", store: "soulgold", gist: "soulgold-locke.json", v: 4, save: "sgx", modes: ["normal", "hard"],
+  id: "soulgold", store: "soulgold", gist: "soulgold-locke.json", v: 5, save: "sgx", modes: ["normal", "hard"],
   sprites: "../rupture/img/pokesprite/",
   calcByMode: { normal: "../rupture/index.html?data=soulgold&gen=8&dmgGen=8&types=6&customPoks=1&noSwitch=1&evs=0",
                 hard: "../rupture/index.html?data=soulgold-hard&gen=8&dmgGen=8&types=6&customPoks=1&noSwitch=1&evs=0" },
@@ -39,8 +39,9 @@ window.GAME = {
   trainersNote: "Teams from the hack's v1.2.1 data. Hard mode swaps in its own teams for 87 trainers (every boss among them) and keeps the rest; gym battles are doubles on Hard. Trainers with no set moves are shown with their latest level-up moves.",
   aiLabels: [["Smart AI", "Smart Trainer: also sees your moves, ability and item, switches out of bad matchups"], ["Basic AI", "Basic Trainer: avoids useless moves and goes for KOs with the best damaging move"]],
   how: cap => `
-      <p><b>Your options.</b> Every species you can catch, be given or trade for by this fight (SoulGold v1.2.1 encounter tables: grass by time of day, Surf from the Morty split, the Old Rod from Route 32, the Good Rod from Olivine and the Super Rod from Blackthorn, Rock Smash from Route 36), plus the gifts and in-game trades. Chuck, Jasmine and Pryce can be done in any order, so everything around Olivine, Cianwood and Mahogany counts from the 5th gym on. The Gachapon starters, Hidden Grottos, legendaries and the Achievement rewards aren't counted. Wild levels aren't used as a limit (the hack can scale them). Each is evolved as far as it can go by the level cap (${cap} here, SoulGold's own cap); evolution items count once they can be found.</p>
-      <p><b>Moves.</b> Level-up moves up to the cap and TMs from when you can pick them up (gym TMs after the gym, Goldenrod Dept. Store and Game Corner TMs from Goldenrod). The tutor and egg move masters aren't counted. Abilities: first regular ability (innates are post-game).</p>
+      <p><b>Your options.</b> Every species you can catch, be given or trade for by this fight. Where you can go is worked out from the game's own maps: the page walks them like a player would, with the field moves you have at that point (Rock Smash needs 1 badge, Cut 2, Strength 3, Surf 4, Whirlpool 7, Waterfall and Rock Climb 8) and the story roadblocks from the game's scripts (the man on Route 32, Sudowoodo, the Mahogany merchant, the Dragon's Den and Tin Tower guards, the League gate). So, for example, everything from Route 38 to Olivine, Mahogany and the Lake of Rage counts from the Morty split (you can walk there once Sudowoodo is gone), and Surf areas from the 5th gym on.</p>
+      <p><b>Level caps.</b> A wild Pokémon whose lowest level is above the cap (${cap} here) isn't counted until the cap reaches it. Rods: Old from Route 32, Good from Olivine, Super from Blackthorn. The Gachapon starters, Hidden Grottos, legendaries and the Achievement rewards aren't counted. Each Pokémon is evolved as far as it can go by the cap; evolution items count once you can actually pick one up or buy it, "level up knowing a move" once the move is learnable, and "level up in a place" once you can get there.</p>
+      <p><b>Moves.</b> Level-up moves up to the cap and TMs from when you can pick them up or buy them (gym TMs after the gym; gyms 5 to 7 count after all three). Recharge moves, Last Resort and moves that faint the user are never picked for your side. The tutor and egg move masters aren't counted. Abilities: first regular ability (innates are post-game).</p>
       <p><b>Type chart.</b> The modern chart with Fairy (no type changes in the main game).</p>`,
   ai: `<h2>Enemy AI</h2>
     <p>SoulGold uses pokeemerald-expansion's AI. Every trainer has one of two settings, shown on the Trainers page:</p>
@@ -52,6 +53,6 @@ window.GAME = {
 </script>
 <script src="../shared/model.js?v=3"></script>
 <script src="../shared/savereader_sgx.js?v=1"></script>
-<script src="../shared/app.js?v=9"></script>
+<script src="../shared/app.js?v=10"></script>
 </body>
 </html>

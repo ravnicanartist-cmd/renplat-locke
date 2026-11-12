@@ -483,7 +483,7 @@
     const where = {};
     META.areas.forEach(a => a.mons.forEach(([s, an, how]) => { (where[s] = where[s] || new Set()).add(`${an} (${how})`); }));
     const ev = {};
-    Object.entries(META.evos).forEach(([a, l]) => l.forEach(e => { (ev[a] = ev[a] || []).push(`→ ${e.to} (${e.kind === "level" ? "Lv " + e.p : e.kind === "friendship" ? "friendship, instant" : e.p})`); }));
+    Object.entries(META.evos).forEach(([a, l]) => l.forEach(e => { (ev[a] = ev[a] || []).push(`→ ${e.to} (${e.kind === "level" ? "Lv " + e.p : e.kind === "friendship" ? "friendship" : e.kind === "move" ? "level up knowing " + e.p : e.kind === "place" ? "level up in " + e.p : e.p})`); }));
     let h = `<p class="intro">${G.dexIntro}</p>
       <div class="wrap"><table class="dex"><thead><tr><th></th><th>#</th><th>Pokémon</th><th>Types</th><th class="n">HP</th><th class="n">Atk</th><th class="n">Def</th><th class="n">SpA</th><th class="n">SpD</th><th class="n">Spe</th><th class="n">Total</th><th>Abilities</th></tr></thead><tbody>`;
     Object.entries(META.mons).forEach(([n, d]) => {
@@ -567,12 +567,12 @@
     if (SAVE) {
       const won = META.fights.filter((f, i) => i <= beatenMax());
       h += `<div class="sum"><b>What the save reader found</b><ul>
-        <li>Trainer ${esc(SAVE.name)} (${SAVE.gender === "F" ? "girl" : "boy"}), ID ${SAVE.tid}, play time ${SAVE.hours}h ${SAVE.minutes}m${SAVE.block === "main" ? "" : ` (from the ${SAVE.block} save copy, the newer one)`}</li>
+        <li>Trainer ${esc(SAVE.name)} (${SAVE.gender === "F" ? "girl" : "boy"}), ID ${SAVE.tid}, play time ${SAVE.hours}h ${SAVE.minutes}m${!SAVE.block || SAVE.block === "main" ? "" : ` (from the ${SAVE.block} save copy, the newer one)`}</li>
         <li>Badges: ${SAVE.badges.length ? SAVE.badges.map(esc).join(", ") : "none"}</li>
-        <li>Starter: ${esc(SAVE.starter || "not chosen yet")}</li>
+        <li>Starter: ${esc(SAVE.starterMon ? SAVE.starterMon + (SAVE.starter ? " (" + SAVE.starter + ")" : "") : SAVE.starter || "not chosen yet")}</li>${SAVE.mode ? `<li>Difficulty: ${esc(SAVE.mode)}${SAVE.caps ? " · level caps: " + esc(SAVE.caps) : ""}</li>` : ""}
         <li>Party: ${SAVE.party.length ? SAVE.party.map(m => `${esc(m.name)} Lv ${m.level} (${esc(m.moves.join(", "))})`).join("; ") : "empty"}</li>
         <li>PC boxes: ${SAVE.boxes.length} Pokémon</li><li>Pokédex: ${SAVE.caught.length} caught</li>
-        <li>Story fights won: ${won.length ? esc(won.filter(f => /Leader|Commander|Boss|Rival|Elite|Champion|Dawn|Lucas|Barry|Plasma|Colress|Ghetsis|Shadow/.test(f.names.join(" "))).map(f => f.label).join(", ")) : "none yet"}</li></ul></div>`;
+        <li>Story fights won: ${won.length ? esc(won.map(f => f.label).join(", ")) : "none yet"}</li></ul></div>`;
     }
     h += `<h3 class="sec">Rules</h3><div class="sum"><label class="chk"><input type="checkbox" id="nzon" ${NUZ.on ? "checked" : ""}> Nuzlocke mode (first encounter per area, dupes clause)</label><br>
       <label class="chk"><input type="checkbox" id="nzshiny" ${NUZ.shiny ? "checked" : ""}> Shiny clause (shinies don't use the area)</label>

@@ -90,7 +90,9 @@ ABKEY = {KEY(a): a for a in ABN.values()}
 SPLITS = ["Falkner", "Bugsy", "Whitney", "Morty", "Gym 5", "Gym 6", "Gym 7", "Rocket takeover", "Clair", "Ho-Oh / Lugia", "Elite Four", "Post-game"]
 CAPS = [12, 19, 26, 34, 42, 45, 48, 55, 58, 62, 70, 100]
 POST = 11
-SURF, ROCKSMASH, OLD, GOOD, SUPER = 4, 1, 1, 4, 8   # Rock Smash: HM on Route 36, usable in the field with the Zephyr Badge
+# Field moves need a badge in SoulGold (src/field_move.c): Rock Smash 1 (HM on Route 36), Cut 2, Strength 3 (HM in Olivine), Surf 4,
+# Whirlpool 7, Waterfall / Rock Climb 8.  Rods: Old = Route 32 Pokémon Center, Good = Olivine (walkable before Morty), Super = Blackthorn.
+SURF, ROCKSMASH, OLD, GOOD, SUPER = 4, 1, 1, 3, 8
 GYMDONE = [(r"Violet City Gym", 1), (r"Azalea Town Gym", 2), (r"Goldenrod City Gym", 3), (r"Ecruteak City Gym", 4),
            (r"(Olivine City|Cianwood|Mahogany Town) Gym", 7), (r"Blackthorn City Gym", 9)]
 LOCS = [
@@ -108,22 +110,47 @@ LOCS = [
     (r"^(Route 44|Ice Path|Blackthorn)", 8),
     (r"^(Route 27|Route 26|Tohjo|Victory Road|Indigo|Pokemon League|Pokémon League)", 10),
 ]
-def loc_stage(loc, src=""):
+# Reachability from the game's own maps (tools/reach.py walks the map grid; tools/stages.py adds the story gates read from the scripts):
+# earliest stage you can stand in each map / reach its grass, water, rocks and item balls.
+import stages as STG
+FIRST, ITEMST = STG.staged()
+def to_split(s): return 99 if s is None else POST if s >= 11 else s
+NORM = lambda x: re.sub(r"[^a-z0-9]", "", str(x).lower())
+MAPID = {}
+for mid, j in STG.R.MAPS.items(): MAPID.setdefault(NORM(j["name"]), mid)
+for e in J("encounters.json"): MAPID[NORM(e["name"])] = e["map"]
+ITEMCONST = {i["name"]: i["constant"] for i in J("items.json")}
+def reach(loc, kind="land"):
+    mid = MAPID.get(NORM(loc))
+    return to_split(FIRST.get((mid, kind))) if mid else None
+def loc_stage(loc, src="", item=None):
     s = f"{loc} {src}"
-    if re.search(r"postgame|post-game|achievement|trophy|Hidden Grotto|Wild held|Battle Cafe|Title Defense", s, re.I): return 99
-    if re.search(r"after 4 badges|after 4th badge", s, re.I): return 4
-    if re.search(r"Sprout Tower Basement|Deep Ilex|New Bark Town House 3|Puzzle And Reward Chambers|Dark Cave South Side Item ball", s): return 99    # behind later events (Dive is post-game; the Ruins of Alph chambers open later, per Carlos; so are the early Shiny / Dusk Stones)
+    if re.search(r"postgame|post-game|achievement|trophy|Hidden Grotto|Wild held|Battle Cafe|Title Defense|BP shop|Password|puzzles", s, re.I): return 99
     if re.search(r"New Bark Town Lab Gift", s): return 1      # Elm gives the Shiny Stone once the Togepi egg hatches (Carlos got it with 1 badge)
-    m = re.match(r"Gate (?:Goldenrod City )?(Route \d+)", loc)
-    if m: loc = m.group(1)
-    if re.search(r"After Rocket Hideout", s, re.I): return 7
-    if re.search(r"Bug Catching Contest", s): return 3
+    if re.search(r"New Bark Town House 3", s): return 99       # Dive: post-game
+    if re.search(r"After Rocket Hideout|^Rocket Hideout", s, re.I): return 7       # the Mahogany hideout (entered through a script)
+    if re.search(r"^Goldenrod City Underground (Storage|Switches)", s): return 8   # only open during the Radio Tower takeover
+    if re.search(r"^Kitakami Well", s): return 9
+    if re.search(r"After Jasmine", s, re.I): return 7
+    if re.search(r"Bug Catching Contest|place choice", s): return 3
     if re.search(r"Game Corner", s): return 2
     for pat, g in GYMDONE:
         if re.search(pat, loc): return g
-    for pat, g in LOCS:
-        if re.search(pat, loc, re.I): return g
-    return 99
+    m = re.match(r"Gate (?:Goldenrod City )?(Route \d+)", loc)
+    mid = MAPID.get(NORM(loc)) or (MAPID.get(NORM(m.group(1))) if m else None)
+    g = None
+    if mid:
+        if src in ("Item ball",) and item:
+            g = to_split(ITEMST.get((mid, item)))            # a ball you can't walk to (yet) stays out
+        else:
+            g = to_split(FIRST.get((mid, "land")))
+    else:
+        for pat, gg in LOCS:
+            if re.search(pat, loc, re.I): g = gg; break
+        if g is None: g = 99
+    if re.search(r"after 4 badges|after 4th badge", s, re.I): g = max(g, 4)
+    if re.search(r"After beating Whitney", s, re.I): g = max(g, 3)
+    return g
 
 # ------------------------------------------------------------------ items / TMs
 EVO_ITEMS = {e["p"] for d in MONS.values() for e in d["evos"] if e["kind"] == "item"}
@@ -131,12 +158,12 @@ ITEMS = J("items.json")
 EVO_ITEM = {}
 for it in ITEMS:
     if it["name"] in EVO_ITEMS:
-        g = min([loc_stage(l["map"], l["source"]) for l in it["locations"]] or [99])
+        g = min([loc_stage(l["map"], l["source"], it["constant"]) for l in it["locations"]] or [99])
         EVO_ITEM[it["name"]] = g
 for i in EVO_ITEMS: EVO_ITEM.setdefault(i, 99)
 TMS = []
 for t in J("machines.json"):
-    g = min([loc_stage(l["map"], l["source"]) for l in t["locations"]] or [99])
+    g = min([loc_stage(l["map"], l["source"], t["item"]) for l in t["locations"]] or [99])
     TMS.append((t["label"], t["moveName"], t.get("location") or "", g))
 TM_BY_MOVE = {}
 for tm, mv, w, g in TMS: TM_BY_MOVE[mv] = min(g, TM_BY_MOVE.get(mv, 99))
@@ -151,15 +178,30 @@ SECS = json.load(open(f"{SRC}/src/data/region_map/region_map_sections.json"))["m
 SECNAME = {x["id"]: x.get("name", x["id"]) for x in SECS}
 AREA_FIX = {"Mt Mortar": "Mt. Mortar"}
 def fixarea(a): return AREA_FIX.get(a, a)
-SOURCES = []   # (species, where, how, gate, min level, area)
+SOURCES = []   # (species, where, how, gate for Boss Prep, min level, area, gate for the Nuzlocke area)
 ENC = collections.OrderedDict()
+KIND = {"Land": "enc", "Water": "water", "Fishing": "fish", "Rock": "rock"}
+# places you get into through a script (no door to walk through), and the Safari Zone's later areas (FAQ: 2nd area opens
+# before the Ice Path, 3rd after Tohjo Falls)
+ENC_FIX = {"MAP_ROCKET_HIDEOUT_B1F": 4, "MAP_NATIONAL_PARK_BUG_CONTEST": 2, "MAP_KITAKAMI_WELL_B1F": 9,
+           "MAP_SAFARI_ZONE_TOP_RIGHT": 8, "MAP_SAFARI_ZONE_LOW_RIGHT": 10}
+DROPPED = []
+def level_gate(g, lv):
+    """Level caps: a wild Pokémon above the cap can't be used, so it counts from the first split whose cap reaches its lowest level."""
+    while g < POST and CAPS[g] < lv: g += 1
+    return g
 for e in J("encounters.json"):
     area = fixarea(SECNAME.get(MAPSEC.get(e["map"]), e["name"]))
-    st = loc_stage(e["name"])
     for v in e["variants"]:
         tm = (v.get("time") or "").lower()
         for m in v["methods"]:
-            meth = m["method"]
+            meth = m["method"]; kind = KIND.get(meth.split()[0], "enc")
+            st = to_split(FIRST.get((e["map"], kind)))
+            if e["map"] in ENC_FIX: st = max(ENC_FIX[e["map"]], st if st < 99 else 0)
+            elif st == 99 and (e["map"], "land") not in FIRST and not any((e["map"], k) in FIRST for k in ("water", "fish")):
+                st = POST                                   # never reached on foot: post-game places (Dive, Faraway Island, the Pyramid)
+            elif st == 99:
+                DROPPED.append((e["name"], meth)); continue  # the table exists but there's no such tile to stand on (e.g. fishing on Route 38)
             for k, x in enumerate(m["mons"]):
                 if not x.get("hasSpecies", True): continue
                 n = NAME.get(x["species"])
@@ -172,11 +214,11 @@ for e in J("encounters.json"):
                     how, g = f"{rod} rod", max(st, {"old": OLD, "good": GOOD, "super": SUPER}[rod])
                 else: how, g = meth.lower(), st
                 r = ENC.setdefault((n, e["name"], how), {"g": g, "lv": x["minLevel"], "area": area, "t": set()})
-                r["lv"] = min(r["lv"], x["minLevel"]); r["t"].add(tm)
+                r["lv"] = min(r["lv"], x["minLevel"]); r["t"].add(tm); r["g"] = min(r["g"], g)
 for (n, where, how), r in ENC.items():
     if how == "grass" and len(r["t"]) == 1 and next(iter(r["t"])): how = f"grass ({next(iter(r['t']))})"
-    SOURCES.append((n, where, how, r["g"], r["lv"], r["area"]))
-GIFTS = [(["Togepi"], "Togepi egg from Elm's aide (Violet City)", "egg", 0, "Violet City"),
+    SOURCES.append((n, where, how, level_gate(r["g"], r["lv"]), r["lv"], r["area"], r["g"]))
+GIFTS = [(["Togepi"], "Togepi egg from Elm's aide (Violet City), after the 1st gym", "egg", 1, "Violet City"),
          (["Rattata-Alola", "Zigzagoon-Galar"], "Cherrygrove City (choose one)", "gift", 0, "Cherrygrove City"),
          (["Pawmi"], "Violet City trade (for Cottonee)", "trade", 0, "Violet City"),
          (["Slowpoke-Galar"], "Azalea Town trade (for Slowpoke)", "trade", 1, "Azalea Town"),
@@ -186,15 +228,15 @@ GIFTS = [(["Togepi"], "Togepi egg from Elm's aide (Violet City)", "egg", 0, "Vio
          (["Eevee-Starter", "Pikachu-Starter"], "Bill in Ecruteak (choose one)", "gift", 3, "Ecruteak City"),
          (["Gimmighoul"], "Cianwood City house", "gift", 4, "Cianwood City"),
          (["Tyrogue"], "Mt. Mortar Karate King", "gift", 4, "Mt. Mortar"),
-         (["Rotom"], "Route 39 / 49 gatehouse trade (for Zorua)", "trade", 4, "Route 39"),
-         (["Voltorb-Hisui"], "Olivine City trade (for Mareanie)", "trade", 4, "Olivine City"),
+         (["Rotom"], "Route 39 / 49 gatehouse trade (for Zorua)", "trade", 3, "Route 39"),
+         (["Voltorb-Hisui"], "Olivine City trade (for Mareanie)", "trade", 3, "Olivine City"),
          (["Gabite"], "Blackthorn City trade (for Dragonair)", "trade", 8, "Blackthorn City"),
          (["Dratini"], "Dragon's Den shrine (after Clair)", "gift", 9, "Dragon's Den"),
          (["Beldum"], "Steven in Kitakami", "gift", 9, "Kitakami Village")]
 for sp, where, how, g, area in GIFTS:
     for s in sp:
         n = s if s in MONS else next((x for x in MONS if x.lower() == s.lower()), None)
-        if n: SOURCES.append((n, where, how, g, 0, area))
+        if n: SOURCES.append((n, where, how, g, 0, area, g))
         else: print("gift not found", s)
 SOURCES = [s for s in SOURCES if s[0] not in LEGEND]
 
@@ -236,7 +278,7 @@ def damaging(m):
     return d is not None and (m in MD.FIXED or (d["c"] != "Status" and d["bp"] > 1))
 def pool(stage, cap):
     base, locs = {}, {}
-    for sp, an, how, gate, mlv, loc in SOURCES:
+    for sp, an, how, gate, mlv, loc, rg in SOURCES:
         if gate <= stage:
             base.setdefault(sp, []).append(f"{an} ({how})")
             if how not in ("gift", "egg", "trade", "fossil", "static"): locs.setdefault(sp, set()).add(loc)
@@ -315,9 +357,10 @@ FIGHTS = [
     ("morty", "Morty", 3, "G", [({}, "TRAINER_MORTY_1")]),
     ("gym5", "Gym 5: Chuck / Jasmine / Pryce", 4, "G", [({"leader": a}, c) for a, c, _ in GYM57]),
     ("gym6", "Gym 6: Chuck / Jasmine / Pryce", 5, "G", [({"leader": a}, c + "_2") for a, c, _ in GYM57]),
+    # The Mahogany hideout has to be cleared before Pryce will fight you; its bosses are built for the 7th-gym cap (48)
+    ("petrel1", "Petrel (Rocket Hideout)", 6, "V", [({}, "TRAINER_PETREL_1")]),
+    ("ariana1", "Ariana (Rocket Hideout)", 6, "V", [({}, "TRAINER_ARIANA_1")]),
     ("gym7", "Gym 7: Chuck / Jasmine / Pryce", 6, "G", [({"leader": a}, c + "_3") for a, c, _ in GYM57]),
-    ("petrel1", "Petrel (Rocket Hideout)", 7, "V", [({}, "TRAINER_PETREL_1")]),
-    ("ariana1", "Ariana (Rocket Hideout)", 7, "V", [({}, "TRAINER_ARIANA_1")]),
     ("petrel2", "Petrel (Radio Tower)", 7, "V", [({}, "TRAINER_PETREL_2")]),
     ("silver4", "Silver (Goldenrod Underground)", 7, "V", SIL(4)),
     ("proton2", "Proton (Radio Tower)", 7, "V", [({}, "TRAINER_PROTON_2")]),
@@ -382,9 +425,13 @@ def main():
             if not team: continue
             lv = max(m["l"] for m in team)
             locs = t.get("locations") or [""]
-            ls = loc_stage(locs[0])
+            ls = reach(locs[0])                              # where the trainer stands: the split you can first walk there
+            if ls is None: ls = next((g for pat, g in LOCS if re.search(pat, locs[0], re.I)), 99)
+            if re.search(r"Title Defense|Battle Cafe", locs[0]): ls = 99
             st = lvl_stage(lv)
             if ls < 99: st = max(st, ls) if ls < POST else POST
+            if re.search(r"Rocket Hideout", locs[0]): st = 6                                  # before Pryce (see the Petrel / Ariana note)
+            if re.search(r"Goldenrod City (Radio Tower|Underground (Storage|Switches))", locs[0]): st = 7   # the takeover
             if lv > 70: st = POST
             fnote = next((f for f in FIGHTS for v, cc in f[4] if cc == c), None)
             if fnote: st = fnote[2]
@@ -430,6 +477,7 @@ def main():
                 prev[tb] = {r["s"] for r in P}; prevst[tb] = stage
             dbl = mode == "hard" and tab == "G" and key not in ("will", "koga", "bruno", "karen", "lance")
             note = "Hard mode: this gym is a double battle; matchups are still 1-on-1." if dbl else ""
+            if key in ("petrel1", "ariana1"): note = "The Mahogany hideout must be cleared before Pryce's gym opens (it needs Surf, so 4 badges). This team is built for the 7th-gym cap (48), which fits doing Chuck and Jasmine first; if you go earlier you'll be under-levelled by your cap."
             if key in ("gym5", "gym6", "gym7"): note = ("Chuck, Jasmine and Pryce can be done in any order and their teams scale with it: pick the leader you're facing. " + note).strip()
             dump(f"{OUT}/fights/{mode}/{key}.json", {"key": key, "label": label, "cap": cap, "team": team,
                  "variants": [{"v": v, "cols": c} for v, c in zip(vars_, cols)], "pool": P, "grid": grid, "new": new, "since": since})
@@ -439,9 +487,9 @@ def main():
         index[mode] = {"fights": idx, "tabs": tabs, "order": {f["key"]: i for i, f in enumerate(idx)}, "caps": {s: c for s, c in zip(SPLITS, CAPS)}}
     # ---- Nuzlocke areas
     areas = collections.OrderedDict()
-    for sp, an, how, gate, mlv, loc in sorted(SOURCES, key=lambda s: s[3]):
-        a = areas.setdefault(loc, {"name": loc, "gate": gate, "split": SPLITS[min(gate, POST)], "mons": [], **({"met": "Ruins of Alph"} if loc.startswith("Fossil revival") else {})})
-        a["gate"] = min(a["gate"], gate)
+    for sp, an, how, gate, mlv, loc, rg in sorted(SOURCES, key=lambda s: (s[6], s[3])):
+        a = areas.setdefault(loc, {"name": loc, "gate": rg, "split": SPLITS[min(rg, POST)], "mons": [], **({"met": "Ruins of Alph"} if loc.startswith("Fossil revival") else {})})
+        a["gate"] = min(a["gate"], rg)
         a["mons"].append([sp, an, how, gate, mlv])
     for a in areas.values(): a["split"] = SPLITS[min(a["gate"], POST)]
     meta = {"game": "soulgold",
