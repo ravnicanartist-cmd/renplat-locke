@@ -26,6 +26,7 @@
       let [mt, cat, bp] = m;
       if (META.fixed[move] != null) return eff(mt, d.t) === 0 ? 0 : (META.fixed[move] === "level" ? a.lv : META.fixed[move]);
       if (!bp || bp <= 1 || cat === "Status") return 0;
+      if (move === "Synchronoise" && !a.t.some(t => d.t.includes(t))) return 0;   // only hits targets that share a type with the user
       const phys = cat === "Physical";
       let A = a.st[phys ? "at" : "sa"]; const D = d.st[phys ? "df" : "sd"];
       if (phys && (a.ab === "Huge Power" || a.ab === "Pure Power")) A *= 2;
@@ -43,7 +44,8 @@
     // like Python's max() over (damage, move): ties go to the later name
     // left out on the player's side: must recharge, Last Resort, moves that faint the user
     const NOUSE = new Set(["Hyper Beam", "Giga Impact", "Blast Burn", "Frenzy Plant", "Hydro Cannon", "Rock Wrecker", "Roar of Time", "Prismatic Laser",
-      "Eternabeam", "Meteor Assault", "Last Resort", "Explosion", "Self-Destruct", "Selfdestruct", "Misty Explosion", "Final Gambit", "Memento"]);
+      "Eternabeam", "Meteor Assault", "Last Resort", "Explosion", "Self-Destruct", "Selfdestruct", "Misty Explosion", "Final Gambit", "Memento",
+      "Dream Eater", "Future Sight", "Doom Desire", "Focus Punch", "Fake Out", "First Impression", "Belch", "Snore"]);   // second line: only work in special situations
     const best = (a, d, intim, skip) => a.moves.filter(m => !skip || !skip.has(m)).reduce((b, m) => {
       const x = damage(a, d, m, intim);
       return !b[1] || x > b[0] || (x === b[0] && m > b[1]) ? [x, m] : b;

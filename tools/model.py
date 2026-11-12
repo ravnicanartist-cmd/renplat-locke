@@ -4,7 +4,9 @@ from collections import OrderedDict
 MONS, MOVES = {}, {}
 # Moves left out on the player's side (Carlos never uses them): must recharge, Last Resort, and moves that faint the user
 NOUSE = {"Hyper Beam", "Giga Impact", "Blast Burn", "Frenzy Plant", "Hydro Cannon", "Rock Wrecker", "Roar of Time", "Prismatic Laser",
-         "Eternabeam", "Meteor Assault", "Last Resort", "Explosion", "Self-Destruct", "Selfdestruct", "Misty Explosion", "Final Gambit", "Memento"}
+         "Eternabeam", "Meteor Assault", "Last Resort", "Explosion", "Self-Destruct", "Selfdestruct", "Misty Explosion", "Final Gambit", "Memento",
+         # only work in special situations (target asleep, first turn, hits two turns later, ...)
+         "Dream Eater", "Future Sight", "Doom Desire", "Focus Punch", "Fake Out", "First Impression", "Belch", "Snore"}
 FIXED = {"Seismic Toss": "level", "Night Shade": "level", "Dragon Rage": 40, "Sonic Boom": 20}
 MULTI = {}
 NATURES = OrderedDict([("Hardy", None), ("Lonely", ["at", "df"]), ("Brave", ["at", "sp"]), ("Adamant", ["at", "sa"]),
@@ -69,6 +71,7 @@ def damage(a, d, move, intim):
     if move in FIXED:
         return 0 if eff(mt, d["t"]) == 0 else (a["lv"] if FIXED[move] == "level" else FIXED[move])
     if not bp or bp <= 1 or cat == "Status": return 0
+    if move == "Synchronoise" and not set(a["t"]) & set(d["t"]): return 0      # only hits targets that share a type with the user
     phys = cat == "Physical"
     A = a["st"]["at" if phys else "sa"]; D = d["st"]["df" if phys else "sd"]
     if phys and a["ab"] in ("Huge Power", "Pure Power"): A *= 2
