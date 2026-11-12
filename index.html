@@ -6,7 +6,7 @@
 <title>Nuzlocke hub</title>
 <meta name="description" content="Nuzlocke trackers, boss prep and save readers for Sacred Gold, Renegade Platinum, Blaze Black 2 Redux and Emerald Rupture, plus a Drayano Gauntlet tracker.">
 <meta name="theme-color" content="#1b2433">
-<link rel="stylesheet" href="shared/style.css?v=5">
+<link rel="stylesheet" href="shared/style.css?v=10">
 <script>
 // the old Renegade Platinum links (#prep, #run, ...) moved to renplat/
 if (/^#(prep|run|box|dex|data)/.test(location.hash)) location.replace("renplat/" + location.hash);
@@ -59,11 +59,12 @@ if (/^#(prep|run|box|dex|data)/.test(location.hash)) location.replace("renplat/"
   }
 
   function games() {
-    return `<p class="intro">One place for every run. Each game keeps its own tracker; your GitHub token and private gist are shared between them, so set sync up once on any game's "Save &amp; sync" page.</p>
-      <div class="games">${GAMES.map(g => { const t = fromTracker(g);
-        const stat = t ? `<br><span class="muted">${t.alive.length} alive · ${t.dead.length} dead${t.badges != null ? ` · ${t.badges} badges in your last save` : ""}</span>` : "";
-        return g.url ? `<a class="game" href="${g.url}"><b>${esc(g.name)}</b><br><span class="muted">${esc(g.note)}</span>${stat}</a>`
-                     : `<div class="game soon"><b>${esc(g.name)}</b><br><span class="muted">${esc(g.note)}</span></div>`; }).join("")}${OTHER.map(o => `<div class="game"><b>${esc(o.name)}</b><br><span class="muted">${esc(o.note)}</span><br>${o.links.map(([h, t]) => `<a href="${h}">${t}</a>`).join(" · ")}</div>`).join("")}</div>
+    const ART = { sg: "ho-oh", rp: "giratina-origin", bb2r: "kyurem-black", SoulGold: "suicune", "Emerald Rupture": "zekrom" };
+    const art = k => `<img class="art" alt="" src="rupture/img/pokesprite/${ART[k]}.png" onerror="this.remove()">`;
+    return `<div class="hero"><h1>Nuzlocke hub</h1><p>One place for every run. Each game keeps its own tracker; your GitHub token and private gist are shared between them, so set sync up once on any game's "Save &amp; sync" page.</p></div>
+      <div class="games">${GAMES.map((g, i) => { const t = fromTracker(g);
+        const stat = t ? `<span class="gstat">${t.alive.length} alive · ${t.dead.length} dead${t.badges != null ? ` · ${t.badges} badges` : ""}</span>` : "";
+        return `<a class="game g-${g.id}" href="${g.url}">${art(g.id)}<span class="gtag">Gauntlet · game ${i + 1}</span><b>${esc(g.name)}</b><span class="muted">${esc(g.note)}</span>${stat}</a>`; }).join("")}${OTHER.map(o => `<div class="game g-${o.name === "SoulGold" ? "soulgold" : "rupture"}">${art(o.name)}<span class="gtag">${o.name === "SoulGold" ? "Side run" : "Your hack"}</span><b>${esc(o.name)}</b><span class="muted">${esc(o.note)}</span><div class="glinks">${o.links.map(([h, t]) => `<a href="${h}">${t}</a>`).join("")}</div></div>`).join("")}</div>
       <h3 class="sec">Drayano Gauntlet</h3><p class="muted">${G.on ? `On: ${G.order.map(o => esc(GAMES.find(g => g.id === o.id).name)).join(" → ")}.` : "Off."} <a href="#gauntlet">Set it up</a>.</p>`;
   }
 

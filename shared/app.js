@@ -5,6 +5,7 @@
   const $ = s => document.querySelector(s);
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const LOCAL = new Set(["sel", "tab", "show", "boxes", "pcboxes", "ttab", "tonly", "mode"]);     // per-device settings, not synced
+  document.documentElement.dataset.game = G.id;
   const store = {
     get(k, d) { try { const v = localStorage.getItem(G.store + "." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem(G.store + "." + k, JSON.stringify(v)); } catch (e) { /* storage full or blocked */ }
@@ -288,7 +289,7 @@
     h += `<div class="bosspick">` + keys.map(k => { const x = F(k), won = SAVE && fightIdx(k) <= bmax;
       return `<button data-k="${k}" class="${k === key ? "on" : ""} ${won ? "done" : ""} g-${S.tab === "A" ? ((tabsOf(k) || []).find(t => t !== "A") || "") : S.tab}" title="${esc(x.loc)} · cap ${x.cap}${x.kind === "double" ? " · double battle" : ""}">${won ? "✓ " : ""}${esc(x.label)}${x.kind === "double" ? ' <span class="x2">2v2</span>' : ""}</button>`; }).join("") + `</div>`;
     h += chips(key, d.variants.map(v => v.v));
-    const BT = M.bossTeam(team), WN = { rain: "☔ Rain", sun: "☀ Harsh sun", sand: "🌪 Sandstorm", hail: "❄ Hail / snow" };
+    const BT = M.bossTeam(team), WN = { rain: "Rain", sun: "Harsh sun", sand: "Sandstorm", hail: "Hail / snow" };
     const kindTag = f.kind === "double" ? `<span class="tag dbl big">2 v 2 · Double battle</span>` : f.kind === "multi" ? `<span class="tag dbl">Double / multi battle: matchups are still 1-on-1</span>` : f.kind === "gauntlet" ? `<span class="tag dbl">Back-to-back fights</span>` : "";
     h += `<div class="prephead"><b>${esc(f.label)}</b> <span class="muted">${esc(f.loc)} · level cap ${d.cap} · ${N} Pokémon you could have</span>${kindTag}
       ${isBeaten(key) ? '<span class="tag boss">✓ Beaten (from your save)</span>' : ""}</div>`;
