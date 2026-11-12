@@ -263,6 +263,7 @@ def areaname(b):
     a = (b["sub"] or b["area"]).title().replace("Mt.", "Mt.").replace("Pokemon", "Pokémon")
     return re.sub(r"\bR(\d+)\b", r"R\1", a)
 missing = set()
+RATE = {}
 SOURCES = []        # (species, area display, method label, gate list)
 for b in B:
     kind = method_kind(b["method"])
@@ -279,6 +280,17 @@ for b in B:
     for m in b["mons"]:
         sp = canon(m["s"])
         if sp not in MONS or sp in S.LEGENDARY or m["s"] in S.LEGENDARY: continue
+        def pc(i):
+            try: return float(m["v"][i] or 0)
+            except (ValueError, IndexError): return 0.0
+        if kind in ("grass", "cave", "ground", "other"):
+            rr = RATE.setdefault((sp, an, kind), [0, 0, 0])
+            for i in range(3): rr[i] += pc(i + 1)
+        elif kind in ("surf", "honey tree"):
+            rr = RATE.setdefault((sp, an, kind), [0]); rr[0] += pc(1)
+        elif kind == "rods":
+            for col, rod in ((1, "Old Rod"), (2, "Good Rod"), (3, "Super Rod")):
+                rr = RATE.setdefault((sp, an, rod), [0]); rr[0] += pc(col)
         if f"{m['s']}@{b['area']}" in S.REMOVED: continue
         v = m["v"]
         if kind in ("grass", "cave", "ground", "other"):
@@ -537,7 +549,8 @@ def main():
         a = areas.setdefault(loc, {"name": loc, "gate": None, "mons": []})
         g0 = max((ORDER.get(g, -1) if g not in (None, "post") else 999 for g in gates), default=-1)
         if g0 < 999 and (a["gate"] is None or g0 < a["gate"]): a["gate"] = g0
-        a["mons"].append([sp, an, how, g0, mlv])
+        rr = [round(x) for x in RATE.get((sp, an, how), [])]
+        a["mons"].append([sp, an, how, g0, mlv] + ([rr[0] if len(set(rr)) == 1 else rr] if any(rr) else []))
     AL = [a for a in areas.values()]
     AL.sort(key=lambda a: (a["gate"] if a["gate"] is not None else 999))
     meta["areas"] = AL

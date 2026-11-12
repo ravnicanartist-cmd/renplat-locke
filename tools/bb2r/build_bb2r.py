@@ -133,6 +133,7 @@ def meth_at(i):
 def mkind(m):
     m = m.lower()
     return "surf" if "surf" in m else "fishing" if "fish" in m else "dark grass" if "doubles" in m else "shaking" if "shaking" in m else "grass"
+RATE = {}
 SOURCES = []    # (species, area display, how, split gate, min level, nuzlocke area)
 def basearea(a):
     a = a.split("\\n")[0].strip()
@@ -153,6 +154,8 @@ for j in range(1, len(E[0]) - 2):
         how = mkind(meth_at(i))
         gate = max(S.AREA[loc], S.SURF if how == "surf" else 0, S.FISH if how == "fishing" else 0)
         SOURCES.append((canon(sp), an.replace("\\n", " "), how, gate, min(lv) if lv else 0, loc))
+        try: RATE[(canon(sp), an.replace("\\n", " "), how)] = (max if how == "fishing" else lambda a, b: a + b)(RATE.get((canon(sp), an.replace("\\n", " "), how), 0), float(E[i][j + 1] or 0) * 100)
+        except ValueError: pass
 if missing: print("UNMAPPED", missing)
 for sp, an, how, gate, loc in S.GIFTS:
     for s2 in (sp if isinstance(sp, list) else [sp]):
@@ -285,7 +288,7 @@ def main():
     for sp, an, how, gate, mlv, loc in sorted(SOURCES, key=lambda s: s[3]):
         a = areas.setdefault(loc, {"name": loc, "gate": gate, "split": S.SPLITS[min(gate, 9)], "mons": []})
         a["gate"] = min(a["gate"], gate)
-        a["mons"].append([sp, an, how, gate, mlv])
+        a["mons"].append([sp, an, how, gate, mlv] + ([round(RATE[(sp, an, how)])] if RATE.get((sp, an, how)) else []))
     meta = {"game": "bb2r", "mons": {n: {"no": d["no"], "t": d["t"], "bs": d["bs"], "ab": d["ab"] + ([d["ha"]] if d["ha"] else []), "fam": d["fam"]} for n, d in MONS.items()},
             "moves": {m: [d["t"], d["c"], d["bp"]] for m, d in MOVES.items()}, "chart": MD.CHART,
             "natures": {k: v for k, v in MD.NATURES.items() if v}, "boost": MD.BOOST, "immune": MD.IMMUNE, "multi": MULTI,

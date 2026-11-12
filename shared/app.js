@@ -405,6 +405,18 @@
     });
     return g;
   }
+  // wild encounters split into one labelled row per method, commonest first
+  const MROW = [[/^(grass|walking)$/, "Grass", "m-grass"], [/^dark grass$/, "Dark grass", "m-grass"], [/^shaking$/, "Shaking grass", "m-grass"], [/^cave$/, "Cave", "m-cave"], [/^ground$/, "Walking", "m-cave"],
+    [/^surf$/, "Surf", "m-surf"], [/^old rod$/i, "Old Rod", "m-rod"], [/^good rod$/i, "Good Rod", "m-rod"], [/^super rod$/i, "Super Rod", "m-rod"], [/^fishing$/, "Fishing (best rod)", "m-rod"],
+    [/^rock smash$/, "Rock Smash", "m-cave"], [/^honey tree$/, "Honey tree", "m-other"], [/^radio$/, "Radio (Pokégear)", "m-other"], [/^swarm$/, "Swarm", "m-other"], [/^revive$/, "Revive", "m-other"]];
+  function methodRows(wild) {
+    const rows = [];
+    wild.forEach(m => { const i = MROW.findIndex(x => x[0].test(m[2])), lab = i < 0 ? m[2][0].toUpperCase() + m[2].slice(1) : MROW[i][1];
+      let r = rows.find(x => x[0] === lab); if (!r) rows.push(r = [lab, i < 0 ? "m-other" : MROW[i][2], [], i < 0 ? 99 : i]); r[2].push(m); });
+    rows.forEach(r => r[2].sort((x, y) => y[6] - x[6]));
+    return rows.sort((x, y) => x[3] - y[3]);
+  }
+
   function run() {
     refreshOwned();
     const used = Object.values(NUZ.areas).filter(a => a.st).length, dead = Object.keys(NUZ.dead).length;
@@ -421,8 +433,20 @@
         // one entry per species and method; times of day (morning / day / night) are merged into one label
         const byKey = new Map();
         a.mons.forEach(m => { const base = m[2].replace(/ \((morning|day|evening|night)\)$/, ""), t = (/\((morning|day|evening|night)\)$/.exec(m[2]) || [])[1], k = m[0] + "|" + base;
-          const e = byKey.get(k) || byKey.set(k, [m[0], m[1], base, m[3], m[4], new Set()]).get(k); if (t) e[5].add(t); });
-        const mons = [...byKey.values()].map(e => [e[0], e[1], e[5].size && e[5].size < 3 ? `${e[2]} (${[...e[5]].join(", ")})` : e[2], e[3], e[4]]);
+          const e = byKey.get(k) || byKey.set(k, [m[0], m[1], base, m[3], m[4], new Set(), []]).get(k); if (t) e[5].add(t);
+          const rt = m[5];   // encounter rate: one number, [morning, day, night], or { time: rate }
+          if (typeof rt === "number") e[6].push([t || "", rt]);
+          else if (Array.isArray(rt)) ["morning", "day", "night"].forEach((x, i) => e[6].push([x, rt[i]]));
+          else if (rt) Object.entries(rt).forEach(([x, v]) => e[6].push([x, v])); });
+        const rateOf = e => { const rs = e[6]; if (!rs.length) return ["", 0];
+          const vals = rs.map(x => x[1]), mx = Math.max(...vals), same = vals.every(v => v === vals[0]);
+          if (same) return [vals[0] + "%", mx];
+          const byT = {}; rs.forEach(([t, v]) => { if (t) byT[t] = Math.max(byT[t] || 0, v); });
+          const ts = Object.keys(byT);
+          if (ts.length > 1 && rs.every(x => x[0])) return [ts.map(t => `${t[0].toUpperCase()} ${byT[t]}%`).join(" · "), mx];
+          return [`${Math.min(...vals)}–${mx}%`, mx]; };
+        const mons = [...byKey.values()].map(e => { const [rt, mx] = rateOf(e);
+          return [e[0], e[1], e[2], e[3], e[4], rt, mx, e[5].size && e[5].size < 3 ? [...e[5]].join(", ") : ""]; });
         const r = NUZ.areas[a.name] || {}, wild = mons.filter(m => !["gift", "egg", "fossil", "trade", "static"].includes(m[2])), gifts = mons.filter(m => !wild.includes(m));
         const specs = [...new Set(wild.map(m => m[0]).concat(r.st === "caught" && r.s ? [r.s] : []))];   // an evolved catch from the save stays selectable
         const opts = specs.map(s => `<option value="${esc(s)}" ${r.s === s ? "selected" : ""}>${esc(s)}${CURSED.has(fam(s)) && r.s !== s ? " (cursed)" : CAUGHT.has(fam(s)) && r.s !== s ? " (dupe)" : ""}</option>`).join("");
@@ -432,8 +456,9 @@
           ${wild.length ? `<span class="ast">${r.st === "caught" ? `Caught <b>${esc(r.s)}</b>` : r.st === "failed" ? "Failed (fainted / fled)" : r.st === "skip" ? "Skipped" : '<span class="muted">Not used yet</span>'}</span>
             <span class="acts2"><button class="btn small ${r.st === "failed" ? "on" : ""}" data-ast="failed" data-a="${esc(a.name)}">Failed</button><button class="btn small ${r.st === "skip" ? "on" : ""}" data-ast="skip" data-a="${esc(a.name)}">Skip</button>
             ${r.st === "caught" ? `<button class="btn small ${isDead ? "" : "red"}" data-dead="${esc(a.name)}">${isDead ? "Undo death" : "It died"}</button>` : ""}</span>` : '<span class="muted">Gifts only</span>'}</div>
-          <div class="enc pick">${wild.map(m => `<button class="${(CAUGHT.has(fam(m[0])) || CURSED.has(fam(m[0]))) && r.s !== m[0] ? "dupe" : ""} ${r.st === "caught" && r.s === m[0] ? "on" : ""}" data-pick="${esc(m[0])}" data-a="${esc(a.name)}" title="${esc(m[1])}${CAUGHT.has(fam(m[0])) && r.s !== m[0] ? " · dupe: you already have this family" : ""}">${spr(m[0])}${esc(m[0])} <span class="muted">${esc(m[2])}</span></button>`).join("")}${r.st === "caught" && r.s && !wild.some(m => m[0] === r.s) ? `<button class="on" data-pick="${esc(r.s)}" data-a="${esc(a.name)}">${spr(r.s)}${esc(r.s)} <span class="muted">yours</span></button>` : ""}</div>
-          ${gifts.length ? `<div class="enc">${gifts.map(m => `<span title="${esc(m[1])}">${spr(m[0])}${esc(m[0])} <span class="muted">${esc(m[2])} · free</span></span>`).join("")}</div>` : ""}
+          ${methodRows(wild).map(([lab, cls, ms]) => `<div class="mrow"><span class="mlab ${cls}">${esc(lab)}</span><div class="enc pick">${ms.map(m => `<button class="${(CAUGHT.has(fam(m[0])) || CURSED.has(fam(m[0]))) && r.s !== m[0] ? "dupe" : ""} ${r.st === "caught" && r.s === m[0] ? "on" : ""}" data-pick="${esc(m[0])}" data-a="${esc(a.name)}" title="${esc(m[1])}${m[5] ? " · encounter rate " + esc(m[5]) : ""}${CAUGHT.has(fam(m[0])) && r.s !== m[0] ? " · dupe: you already have this family" : ""}">${spr(m[0])}${esc(m[0])}${m[7] ? ` <span class="muted">${esc(m[7])}</span>` : ""}${m[5] ? ` <span class="pct">${esc(m[5])}</span>` : ""}</button>`).join("")}</div></div>`).join("")}
+          ${r.st === "caught" && r.s && !wild.some(m => m[0] === r.s) ? `<div class="mrow"><span class="mlab m-own">Yours</span><div class="enc pick"><button class="on" data-pick="${esc(r.s)}" data-a="${esc(a.name)}">${spr(r.s)}${esc(r.s)}</button></div></div>` : ""}
+          ${gifts.length ? `<div class="mrow"><span class="mlab m-gift">Free extras</span><div class="enc">${gifts.map(m => `<span title="${esc(m[1])}">${spr(m[0])}${esc(m[0])} <span class="muted">${esc(m[2])}</span></span>`).join("")}</div></div>` : ""}
           ${(G.repel || {})[a.name] ? `<div class="repel"><b>Repel trick</b> (lead with this level and use a Repel): ${G.repel[a.name].map(esc).join("; ")}</div>` : ""}</div>`;
       });
       h += `</details>`;

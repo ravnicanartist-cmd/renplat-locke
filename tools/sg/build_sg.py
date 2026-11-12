@@ -158,6 +158,7 @@ def method(label):
     if "night" in l: return "walking (night)", 0
     if "day" in l: return "walking (day)", 0
     return "walking (morning)", 0
+RATE = {}
 SOURCES, missing, unknown = [], set(), set()
 blocks = []
 cur = None
@@ -182,6 +183,7 @@ for j in range(1, len(E[0])):
             how, g = method(lab)
             for x in [x for x in SOURCES if x[1] == an.replace("\\n", " ") and x[2] == src]:
                 SOURCES.append((x[0], x[1], how, x[3], x[4], x[5]))
+                if (x[0], x[1], src) in RATE: RATE[(x[0], x[1], how)] = RATE[(x[0], x[1], src)]
             continue
         s2 = canon(sp)
         if s2 not in MONS:
@@ -189,6 +191,8 @@ for j in range(1, len(E[0])):
             continue
         how, g = method(lab)
         SOURCES.append((s2, an.replace("\\n", " "), how, max(S.AREA[loc], g), lvl or 0, loc))
+        try: RATE[(s2, an.replace("\\n", " "), how)] = (max if how == "fishing" else lambda a, b: a + b)(RATE.get((s2, an.replace("\\n", " "), how), 0), float(E[i][j + 1] or 0) * 100)
+        except ValueError: pass
 st = rows(f"{SRC}/Pokemon_Locations/Static_Encounters_Gifts_Trade.tsv")
 for r in st[2:]:
     sp, where = r[13].strip(), r[14].replace("\\n", " ").strip() if len(r) > 14 else ""
@@ -331,7 +335,7 @@ def main():
     for sp, an, how, gate, mlv, loc in sorted(SOURCES, key=lambda s: s[3]):
         a = areas.setdefault(loc, {"name": loc, "gate": gate, "split": S.SPLITS[min(gate, 9)], "mons": []})
         a["gate"] = min(a["gate"], gate)
-        a["mons"].append([sp, an, how, gate, mlv])
+        a["mons"].append([sp, an, how, gate, mlv] + ([round(RATE[(sp, an, how)])] if RATE.get((sp, an, how)) else []))
     for a in areas.values(): a["split"] = S.SPLITS[a["gate"]]
     meta = {"game": "sg", "mons": {n: {"no": d["no"], "t": d["t"], "bs": d["bs"], "ab": d["ab"], "fam": d["fam"]} for n, d in MONS.items()},
             "moves": {m: [d["t"], d["c"], d["bp"]] for m, d in MOVES.items()}, "chart": CHART,

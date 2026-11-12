@@ -192,7 +192,7 @@ SECNAME = {x["id"]: x.get("name", x["id"]) for x in SECS}
 AREA_FIX = {"Mt Mortar": "Mt. Mortar"}
 def fixarea(a): return AREA_FIX.get(a, a)
 SOURCES = []   # (species, where, how, gate for Boss Prep, min level, area, gate for the Nuzlocke area)
-ENC = collections.OrderedDict()
+ENC = collections.OrderedDict(); RATE = {}
 KIND = {"Land": "enc", "Water": "water", "Fishing": "fish", "Rock": "rock"}
 # places you get into through a script (no door to walk through), and the Safari Zone's later areas (FAQ: 2nd area opens
 # before the Ice Path, 3rd after Tohjo Falls)
@@ -228,8 +228,11 @@ for e in J("encounters.json"):
                 else: how, g = meth.lower(), st
                 r = ENC.setdefault((n, e["name"], how), {"g": g, "lv": x["minLevel"], "area": area, "t": set()})
                 r["lv"] = min(r["lv"], x["minLevel"]); r["t"].add(tm); r["g"] = min(r["g"], g)
+                r.setdefault("rt", {}); r["rt"][tm] = r["rt"].get(tm, 0) + (x.get("rate") or 0)
 for (n, where, how), r in ENC.items():
     if how == "grass" and len(r["t"]) == 1 and next(iter(r["t"])): how = f"grass ({next(iter(r['t']))})"
+    rv = list(r["rt"].values())
+    if any(rv): RATE[(n, where, how)] = rv[0] if len(set(rv)) == 1 else {k: v for k, v in r["rt"].items()}
     SOURCES.append((n, where, how, level_gate(r["g"], r["lv"]), r["lv"], r["area"], r["g"]))
 GIFTS = [(["Togepi"], "Togepi egg from Elm's aide (Violet City), after the 1st gym", "egg", 1, "Violet City"),
          (["Rattata-Alola", "Zigzagoon-Galar"], "Cherrygrove City (choose one)", "gift", 0, "Cherrygrove City"),
@@ -509,7 +512,7 @@ def main():
     for sp, an, how, gate, mlv, loc, rg in sorted(SOURCES, key=lambda s: (s[6], s[3])):
         a = areas.setdefault(loc, {"name": loc, "gate": rg, "split": SPLITS[min(rg, POST)], "mons": [], **({"met": "Ruins of Alph"} if loc.startswith("Fossil revival") else {})})
         a["gate"] = min(a["gate"], rg)
-        a["mons"].append([sp, an, how, gate, mlv])
+        a["mons"].append([sp, an, how, gate, mlv] + ([RATE[(sp, an, how)]] if (sp, an, how) in RATE else []))
     for a in areas.values(): a["split"] = SPLITS[min(a["gate"], POST)]
     meta = {"game": "soulgold",
             "mons": {n: {"no": d["no"], "t": d["t"], "bs": d["bs"], "ab": d["ab"], "fam": d["fam"], **({"sp": d["sp"]} if d["sp"] != rslug(n) else {})} for n, d in MONS.items()},

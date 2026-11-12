@@ -376,3 +376,12 @@ a.game:hover, .game:hover { transform: translateY(-3px); border-color: var(--c);
 .games { align-items: start; } .game { min-height: 0; }
 @media (max-width: 640px) { #top { width: 36px; height: 36px; opacity: .7; right: 10px; bottom: 10px; } }
 .team, .tteam { background: var(--panel); gap: 0; } .mon, .tm { box-shadow: 1px 0 0 var(--line), 0 1px 0 var(--line); }
+
+/* nuzlocke: one row per encounter method, with rates */
+.mrow { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+.mrow .enc { margin-top: 0; flex: 1; }
+.mlab { flex: 0 0 84px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 5px 8px; border-radius: 8px; text-align: center; margin-top: 3px; color: #0b1019; background: #8e9db5; }
+.mlab.m-grass { background: #6fcf7f; } .mlab.m-cave { background: #c9a36b; } .mlab.m-surf { background: #5fb0ff; } .mlab.m-rod { background: #62d6d6; } .mlab.m-other { background: #b79cf2; } .mlab.m-gift { background: #f0b955; } .mlab.m-own { background: #3fae78; }
+.pct { font-size: 11px; font-weight: 700; color: var(--text); background: #ffffff14; border-radius: 999px; padding: 0 6px; margin-left: 2px; white-space: nowrap; }
+.enc.pick button.on .pct { background: #ffffff26; }
+@media (max-width: 640px) { .mrow { flex-direction: column; gap: 4px; } .mlab { flex: none; margin: 0; padding: 2px 10px; } }
