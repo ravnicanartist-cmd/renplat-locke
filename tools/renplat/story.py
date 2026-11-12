@@ -108,7 +108,7 @@ LABELS = {"barry_201": "Barry (Route 201)", "dawn_202": "Dawn / Lucas (Route 202
           "grunts_meadow": "Galactic Grunts (Floaroma Meadow)", "grunts_mansion_gate": "Galactic Grunts (Mansion gate)",
           "mansion_gauntlet": "Galactic Grunts (Mansion gauntlet)", "grunts_verity": "Galactic Grunts (Lake Verity)",
           "grunts_spear": "Galactic Grunts (Spear Pillar)"}
-NOTE = {"dawn_224": "The documentation lists this fight before the League. Route 224 opens after the Elite Four in the base game.",
+NOTE = {"dawn_224": "In this build you have to go through the east side of Victory Road and Route 224 before the League, so this fight comes before the Elite Four. She lets you prepare first.",
         "mira": "Wayward Cave is optional.", "cyrus_dp": "Double battle against Dialga and Palkia at level 70.",
         "volkner": "Known game bug from the docs: Volkner's Rotoms use plain Rotom stats, not their appliance stats. The model uses what the game does."}
 CAPS = {"ROARK": 16, "GARDENIA": 26, "FANTINA": 33, "MAYLENE": 39, "WAKE": 44, "BYRON": 53, "CANDICE": 56, "VOLKNER": 62, "CHAMPION": 78}
@@ -145,7 +145,7 @@ AREA = {
     "ROUTE 223": "volkner", "VICTORY ROAD": "volkner", "VICTORY ROAD (2F)": "volkner", "VICTORY ROAD (B1F)": "volkner",
     "POKEMON LEAGUE": "volkner",
     # after the Elite Four
-    "TURNBACK CAVE": "post", "SNOWPOINT TEMPLE": "post", "ROUTE 224": "post", "FLOWER PARADISE": "post",
+    "TURNBACK CAVE": "post", "SNOWPOINT TEMPLE": "post", "ROUTE 224": "volkner", "FLOWER PARADISE": "post",
     "ROUTE 225": "post", "ROUTE 226": "post", "ROUTE 227": "post", "ROUTE 228": "post", "ROUTE 229": "post",
     "RESORT AREA": "post", "ROUTE 230": "post", "STARK MOUNTAIN": "post", "STARK MOUNTAIN (OUTSIDE)": "post",
     "STARK MOUNTAIN (INSIDE)": "post",
@@ -198,8 +198,8 @@ EVO_ITEM = {"Fire Stone": "barry_203", "Water Stone": "barry_203", "Thunder Ston
             "Protector": "barry_canalave",                               # Iron Island
             "Prism Scale": "gardenia",                                   # Mt. Coronet
             "Deep Sea Scale": "roark", "Deep Sea Tooth": "roark",        # Floaroma Town
+            "Razor Fang": "maylene",                                     # hidden on Route 214 (unchanged from Platinum; not in the hack's item list)
             "Mt. Coronet": "gardenia"}                                   # "level up at Mt. Coronet"
-# Razor Fang has no location in the docs, so Gligar -> Gliscor is skipped.
 
 # TMs / HMs -> fight after which you can get them (no Poké Mart sells TMs in Renegade Platinum)
 TM = {

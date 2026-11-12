@@ -15,7 +15,7 @@
   const load = p => cache[p] || (cache[p] = fetch("data/" + p + "?v=" + (G.v || 1)).then(r => { if (!r.ok) throw new Error(p); return r.json(); }));
 
   // ---------------------------------------------------------------- state
-  const S = { tab: store.get("tab", "G"), sel: store.get("sel", {}), show: store.get("show", "all"), boxes: store.get("pcboxes", true),
+  const S = { grp: store.get("grp", {}), tab: store.get("tab", "G"), sel: store.get("sel", {}), show: store.get("show", "all"), boxes: store.get("pcboxes", true),
               starter: store.get("starter", null), gender: store.get("gender", null), team: store.get("team", {}),
               mode: store.get("mode", (G.modes || [""])[0]), ttab: store.get("ttab", -1), tonly: store.get("tonly", false) };
   // one GitHub token and one private gist for every game in the hub (the old Renegade Platinum page kept it as rp.gist)
@@ -254,6 +254,24 @@
     return `<b>${c[0] ? "✓" : "✗"} vs ${esc(m.s)}</b>: ${c[7] ? "you move first" : "it moves first"}. ${c[1] ? `Your ${esc(c[1])} does ${c[2]}–${c[3]}%` : "You have no damaging move that hits it"}${c[4] ? `; its ${esc(c[4])} does ${c[5]}–${c[6]}% to you.` : "; it can't damage you."}`;
   }
 
+  // moves that matter in a double battle
+  const SPREAD = new Set(["Earthquake", "Rock Slide", "Surf", "Discharge", "Blizzard", "Heat Wave", "Muddy Water", "Dazzling Gleam", "Hyper Voice", "Icy Wind", "Bulldoze", "Lava Plume", "Sludge Wave",
+    "Eruption", "Water Spout", "Razor Leaf", "Air Cutter", "Swift", "Snarl", "Electroweb", "Glaciate", "Struggle Bug", "Petal Blizzard", "Boomburst", "Explosion", "Self-Destruct", "Selfdestruct", "Magnitude",
+    "Powder Snow", "Twister", "Breaking Swipe", "Parabolic Charge", "Origin Pulse", "Precipice Blades", "Diamond Storm", "Make It Rain", "Matcha Gotcha", "Mortal Spin", "Acid", "Incinerate", "Brutal Swing", "Clanging Scales", "Overdrive", "Burning Jealousy", "Disarming Voice", "Bleakwind Storm", "Sandsear Storm", "Wildbolt Storm", "Springtide Storm", "Thousand Arrows", "Land's Wrath", "Core Enforcer", "Dragon Energy", "Astral Barrage", "Glacial Lance", "Shell Trap", "Sparkling Aria", "Tera Starstorm", "Hyperspace Hole", "Silver Wind", "Ominous Wind", "Leaf Tornado", "Relic Song"]);
+  const ALLY = new Set(["Earthquake", "Surf", "Discharge", "Lava Plume", "Sludge Wave", "Bulldoze", "Explosion", "Self-Destruct", "Selfdestruct", "Magnitude", "Boomburst", "Petal Blizzard", "Parabolic Charge", "Brutal Swing", "Mortal Spin", "Sparkling Aria"]);
+  const SUPPORT = new Set(["Protect", "Detect", "Fake Out", "Follow Me", "Rage Powder", "Helping Hand", "Wide Guard", "Quick Guard", "Tailwind", "Trick Room", "Light Screen", "Reflect", "Aurora Veil", "Taunt", "Encore", "Spore", "Sleep Powder", "Thunder Wave", "Will-O-Wisp", "Ally Switch", "After You", "Coaching", "Life Dew", "Heal Pulse", "Decorate", "Spiky Shield", "King's Shield", "Baneful Bunker", "Rain Dance", "Sunny Day", "Sandstorm", "Hail", "Snowscape", "Perish Song", "Feint", "Imprison", "Safeguard", "Swagger", "Flatter", "Charm", "Fake Tears", "Screech", "Icy Wind", "Electroweb", "Snarl"]);
+  function doublesBox(team) {
+    const who = set => { const o = {}; team.forEach(m => m.m.forEach(x => { if (set.has(x)) (o[x] = o[x] || []).push(m.s); })); return Object.entries(o); };
+    const sp = who(SPREAD), su = who(SUPPORT), lead = team.slice(0, 2);
+    const li = (arr, f) => arr.map(([mv, ms]) => `<li>${mvs([mv])} <span class="muted">${esc([...new Set(ms)].join(", "))}${f ? f(mv) : ""}</span></li>`).join("");
+    return `<div class="dblbox"><b>Double battle</b>: two of theirs face two of yours at once. The ✓ / ✗ grid below is still each Pokémon 1-on-1, so read it as "who handles what", then plan pairs.
+      <div class="dblcols"><div><b>They lead with</b><div class="hteam">${lead.map(m => `<span>${spr(m.s)}${esc(m.s)} <span class="muted">Lv ${m.l}</span></span>`).join("")}</div>
+      <span class="muted">Both can hit the same target in one turn: check your lead survives the two leads' best moves added together.</span></div>
+      <div><b>Moves that hit both of yours</b>${sp.length ? `<ul class="ml">${li(sp, mv => ALLY.has(mv) ? " · also hits its own partner" : "")}</ul>` : `<br><span class="muted">None on this team.</span>`}</div>
+      <div><b>Support moves to expect</b>${su.length ? `<ul class="ml">${li(su)}</ul>` : `<br><span class="muted">None on this team.</span>`}</div></div>
+      <span class="muted">Spread moves do 75% of their usual damage when they hit two targets. Your own Protect, Fake Out, Wide Guard and spread moves are worth much more here than in singles.</span></div>`;
+  }
+
   async function prep() {
     refreshOwned();
     const keys = META.tabs[S.tab] || META.tabs.G;
@@ -268,21 +286,23 @@
       Tap ☆ on the ones you have (in a Nuzlocke, the ones you've caught are filled in from the Areas page and your save).</p>` + saveBar();
     h += `<div class="prepf tabs">` + TABS.map(([k, t]) => `<button data-tab="${k}" class="${S.tab === k ? "on" : ""}">${t}</button>`).join("") + `</div>`;
     h += `<div class="bosspick">` + keys.map(k => { const x = F(k), won = SAVE && fightIdx(k) <= bmax;
-      return `<button data-k="${k}" class="${k === key ? "on" : ""} ${won ? "done" : ""} g-${S.tab === "A" ? ((tabsOf(k) || []).find(t => t !== "A") || "") : S.tab}" title="${esc(x.loc)} · cap ${x.cap}">${won ? "✓ " : ""}${esc(x.label)}</button>`; }).join("") + `</div>`;
+      return `<button data-k="${k}" class="${k === key ? "on" : ""} ${won ? "done" : ""} g-${S.tab === "A" ? ((tabsOf(k) || []).find(t => t !== "A") || "") : S.tab}" title="${esc(x.loc)} · cap ${x.cap}${x.kind === "double" ? " · double battle" : ""}">${won ? "✓ " : ""}${esc(x.label)}${x.kind === "double" ? ' <span class="x2">2v2</span>' : ""}</button>`; }).join("") + `</div>`;
     h += chips(key, d.variants.map(v => v.v));
-    const kindTag = f.kind === "multi" ? `<span class="tag dbl">Double / multi battle: matchups are still 1-on-1</span>` : f.kind === "gauntlet" ? `<span class="tag dbl">Back-to-back fights</span>` : "";
+    const BT = M.bossTeam(team), WN = { rain: "☔ Rain", sun: "☀ Harsh sun", sand: "🌪 Sandstorm", hail: "❄ Hail / snow" };
+    const kindTag = f.kind === "double" ? `<span class="tag dbl big">2 v 2 · Double battle</span>` : f.kind === "multi" ? `<span class="tag dbl">Double / multi battle: matchups are still 1-on-1</span>` : f.kind === "gauntlet" ? `<span class="tag dbl">Back-to-back fights</span>` : "";
     h += `<div class="prephead"><b>${esc(f.label)}</b> <span class="muted">${esc(f.loc)} · level cap ${d.cap} · ${N} Pokémon you could have</span>${kindTag}
       ${isBeaten(key) ? '<span class="tag boss">✓ Beaten (from your save)</span>' : ""}</div>`;
     h += `<div class="team">` + team.map((m, j) => {
       const c = cols[j], k = d.grid.filter(row => row[c][0]).length, pct = N ? Math.round(k / N * 100) : 0;
-      return monCard(m, `<div class="beat"><div class="barw"><div class="fill ${pct < 20 ? "lo" : pct < 40 ? "mid" : ""}" style="width:${pct}%"></div></div><span>${k} of ${N} beat it 1-on-1</span></div>`);
+      return monCard(m, (BT[j] && BT[j].w ? `<div class="sub"><span class="tag wx" title="This Pokémon is expected to fight in this weather (its own ability or move, or the lead's). The matchups below already count it.">${WN[BT[j].w]}</span></div>` : "") + `<div class="beat"><div class="barw"><div class="fill ${pct < 20 ? "lo" : pct < 40 ? "mid" : ""}" style="width:${pct}%"></div></div><span>${k} of ${N} beat it 1-on-1</span></div>`);
     }).join("") + `</div>`;
+    if (f.kind === "double" || f.kind === "multi") h += doublesBox(team);
     const notes = [f.note].concat(f.notes || []).filter(Boolean);
     if (notes.length) h += `<p class="muted">${notes.map(esc).join(" · ")}</p>`;
 
     // your real Pokémon
     if (SAVE) {
-      const bosses = team.map(M.bossMon);
+      const bosses = M.bossTeam(team);
       const list = SAVE.party.concat(S.boxes ? SAVE.boxes : []);
       h += `<h3 class="sec">Your Pokémon vs ${esc(f.label)}</h3>
         <p class="prepf"><label class="chk"><input type="checkbox" id="pcboxes" ${S.boxes ? "checked" : ""}> Include PC boxes</label>
@@ -353,8 +373,10 @@
     }
     h += `<h3 class="sec">How this is worked out</h3><div class="how">${G.how(d.cap)}
       <p><b>Stats.</b> Yours: IVs 15, neutral nature, first ability, no item, no EVs. The boss: its real IVs, nature, ability, item and moves from the ROM and the documentation.</p>
-      <p><b>The fight.</b> Each side uses its strongest damaging move every turn (STAB, the type chart with Fairy, type-boosting items, Life Orb, Choice items, Huge/Pure Power, Intimidate, Technician, Thick Fat, immunity abilities, fixed-damage and multi-hit moves). Damage uses the average roll. The faster Pokémon moves first (ties go to you); you win if you need no more hits than it does, or strictly fewer if it moves first.</p>
-      <p><b>Not modelled:</b> status moves, stat boosts and setup, switching, critical hits, accuracy, weather, held-item healing and the AI's choices. So ✓ means a good 1-on-1 matchup, not a guaranteed win, and "X of N beat it" is the share of Pokémon you could have that win 1-on-1, not the share of players who'll have one.</p></div>`;
+      <p><b>The fight.</b> Each side uses its strongest damaging move every turn (STAB, the type chart, Huge/Pure Power, Intimidate, Technician, Thick Fat, Filter / Solid Rock, Tinted Lens, Scrappy, Mold Breaker, immunity abilities, fixed-damage and multi-hit moves). Your side never picks recharge moves, self-KO moves, Last Resort or moves that only work in special situations. Whoever is faster moves first; you win if you knock it out before it knocks you out.</p>
+      <p><b>Held items.</b> The boss's item is counted: type boosters, Life Orb, Choice Band / Specs / Scarf, Muscle Band, Wise Glasses, Expert Belt, Gems, Eviolite, Assault Vest, Air Balloon, Focus Sash (survives the first hit), the berries that halve one super-effective hit, Sitrus / Oran Berry and Leftovers healing. Sturdy and Multiscale work the same way in the games that have them. Your own Pokémon read from a save use their real items too.</p>
+      <p><b>Weather.</b> If a boss Pokémon (or the team's lead) sets rain, sun, sand or hail with its ability or a weather move, its matchups are worked out in that weather: Fire and Water damage, Swift Swim / Chlorophyll / Sand Rush speed, Rock types' Special Defense in sand, Weather Ball, Solar Power. A weather ability on your own Pokémon replaces it.</p>
+      <p><b>Not modelled:</b> status moves, stat boosts and setup, switching, critical hits, accuracy, priority moves, two-turn moves, Trick Room / Tailwind, and the AI's choices. Double battles are still shown 1-on-1. So ✓ means a good 1-on-1 matchup, not a guaranteed win, and "X of N beat it" is the share of the Pokémon you could have that win that matchup.</p></div>`;
     return h;
   }
   function prepDetail(tr) {
@@ -387,8 +409,13 @@
     const used = Object.values(NUZ.areas).filter(a => a.st).length, dead = Object.keys(NUZ.dead).length;
     let h = `<p class="intro">Your Nuzlocke, area by area in story order. Log the first encounter in each area. Families you've already caught are struck through (dupes clause)${NUZ.shiny ? "; shinies go in the extras as the shiny clause allows" : ""}. Gifts, starters and trades are free extras. Reading your save fills in areas from where each of your Pokémon was met.</p>
       ${saveBar()}<div class="sum"><b>${used}</b> areas used · <b>${ALIVE.size}</b> families alive · <b>${dead}</b> dead · <label class="chk"><input type="checkbox" id="nzon" ${NUZ.on ? "checked" : ""}> Nuzlocke mode</label></div>`;
+    const FREE = ["gift", "egg", "fossil", "trade", "static"], bmaxR = SAVE ? beatenMax() : 1e9;
+    h += `<p class="prepf"><button class="btn small" data-grpall="1">Open all</button> <button class="btn small" data-grpall="0">Close all</button> <span class="muted">Tap a Pokémon to log it as the area's catch; tap it again to undo.</span></p>`;
     areaGroups().forEach(g => {
-      h += `<details class="grp" open><summary>${esc(g.title)}</summary>`;
+      const gUsed = g.areas.filter(a => (NUZ.areas[a.name] || {}).st).length, gLeft = g.areas.filter(a => !(NUZ.areas[a.name] || {}).st && a.mons.some(m => !FREE.includes(m[2]))).length;
+      const reached = g.areas.some(a => a.split ? true : (a.gate == null ? false : a.gate <= bmaxR));
+      const isOpen = S.grp[g.title] != null ? S.grp[g.title] : (reached && (gLeft > 0 || !SAVE));
+      h += `<details class="grp" data-g="${esc(g.title)}" ${isOpen ? "open" : ""}><summary>${esc(g.title)} <span class="gcount">${gUsed} used${gLeft ? ` · <b>${gLeft} open</b>` : ""}</span></summary>`;
       g.areas.forEach(a => {
         // one entry per species and method; times of day (morning / day / night) are merged into one label
         const byKey = new Map();
@@ -401,9 +428,10 @@
         const isDead = NUZ.dead[a.name];
         h += `<div class="area ${r.st === "caught" ? (isDead ? "dead" : "used") : r.st ? "fail" : ""}" data-text="${esc((a.name + " " + specs.join(" ")).toLowerCase())}">
           <div class="ah"><b>${esc(a.name)}</b>${r.auto ? '<span class="tag">from your save</span>' : ""}${isDead ? '<span class="tag over">Dead</span>' : ""}
-          ${wild.length ? `<select class="field" data-area="${esc(a.name)}"><option value="">— not yet —</option>${opts}<option value="!failed" ${r.st === "failed" ? "selected" : ""}>Failed (fainted / fled)</option><option value="!skip" ${r.st === "skip" ? "selected" : ""}>Skipped</option></select>` : '<span class="muted">Gifts only</span>'}
-          ${r.st === "caught" ? `<button class="btn ${isDead ? "" : "red"}" data-dead="${esc(a.name)}">${isDead ? "Undo death" : "It died"}</button>` : ""}</div>
-          <div class="enc">${wild.map(m => `<span class="${(CAUGHT.has(fam(m[0])) || CURSED.has(fam(m[0]))) && r.s !== m[0] ? "dupe" : ""}" title="${esc(m[1])}">${spr(m[0])}${esc(m[0])} <span class="muted">${esc(m[2])}</span></span>`).join("")}</div>
+          ${wild.length ? `<span class="ast">${r.st === "caught" ? `Caught <b>${esc(r.s)}</b>` : r.st === "failed" ? "Failed (fainted / fled)" : r.st === "skip" ? "Skipped" : '<span class="muted">Not used yet</span>'}</span>
+            <span class="acts2"><button class="btn small ${r.st === "failed" ? "on" : ""}" data-ast="failed" data-a="${esc(a.name)}">Failed</button><button class="btn small ${r.st === "skip" ? "on" : ""}" data-ast="skip" data-a="${esc(a.name)}">Skip</button>
+            ${r.st === "caught" ? `<button class="btn small ${isDead ? "" : "red"}" data-dead="${esc(a.name)}">${isDead ? "Undo death" : "It died"}</button>` : ""}</span>` : '<span class="muted">Gifts only</span>'}</div>
+          <div class="enc pick">${wild.map(m => `<button class="${(CAUGHT.has(fam(m[0])) || CURSED.has(fam(m[0]))) && r.s !== m[0] ? "dupe" : ""} ${r.st === "caught" && r.s === m[0] ? "on" : ""}" data-pick="${esc(m[0])}" data-a="${esc(a.name)}" title="${esc(m[1])}${CAUGHT.has(fam(m[0])) && r.s !== m[0] ? " · dupe: you already have this family" : ""}">${spr(m[0])}${esc(m[0])} <span class="muted">${esc(m[2])}</span></button>`).join("")}${r.st === "caught" && r.s && !wild.some(m => m[0] === r.s) ? `<button class="on" data-pick="${esc(r.s)}" data-a="${esc(a.name)}">${spr(r.s)}${esc(r.s)} <span class="muted">yours</span></button>` : ""}</div>
           ${gifts.length ? `<div class="enc">${gifts.map(m => `<span title="${esc(m[1])}">${spr(m[0])}${esc(m[0])} <span class="muted">${esc(m[2])} · free</span></span>`).join("")}</div>` : ""}
           ${(G.repel || {})[a.name] ? `<div class="repel"><b>Repel trick</b> (lead with this level and use a Repel): ${G.repel[a.name].map(esc).join("; ")}</div>` : ""}</div>`;
       });
@@ -516,7 +544,8 @@
       h += `<p><b>${esc(sv.name || "Your save")}</b> · ${sv.badges.length} badge${sv.badges.length === 1 ? "" : "s"} · ${sv.hours}h ${String(sv.minutes).padStart(2, "0")}m${sv.mode ? " · " + esc(sv.mode) : G.modes ? " · " + esc(S.mode) : ""} · ${sv.party.length} in party, ${sv.boxes.length} in the PC</p>
         <div class="hteam">${sv.party.map(m => `<span>${spr(m.name)}${esc(m.name)} <span class="muted">Lv ${m.level}</span></span>`).join("")}</div>
         <p><label>How it ended <select class="field" id="hres">${Object.entries(RESULTS).map(([k, v]) => `<option value="${k}">${v[0]}</option>`).join("")}</select></label>
-        <label>Where <select class="field" id="hwhere">${META.fights.map((f, i) => `<option value="${esc(f.key)}" ${next && f.key === next.key ? "selected" : ""}>${esc(f.label)}</option>`).join("")}<option value="">Somewhere else</option></select></label></p>
+        <label>Where <select class="field" id="hwhere">${(() => { const gs = []; META.fights.forEach(f => { const k = f.split || ""; let g = gs.find(x => x[0] === k); if (!g) gs.push(g = [k, []]); g[1].push(f); });
+          return gs.map(([k, fs]) => `<optgroup label="${esc(k ? k + " split" : "Fights")}">${fs.map(f => `<option value="${esc(f.key)}" ${next && f.key === next.key ? "selected" : ""}>${esc(f.label)}</option>`).join("")}</optgroup>`).join(""); })()}<option value="">Somewhere else</option></select></label></p>
         <p><input class="field" id="hnote" placeholder="Where exactly / notes (e.g. Route 42, wild Gyarados crit)" style="width:min(520px,100%)">
         <label>Deaths <input class="field" id="hdeaths" type="number" min="0" value="${dl.length}" style="width:70px"></label></p>
         ${dl.length ? `<p class="muted">Logged deaths: ${esc(dl.join(", "))}</p>` : ""}
@@ -655,12 +684,15 @@
     const q = $("#q").value.trim().toLowerCase();
     document.querySelectorAll("#main [data-text]").forEach(el => { el.style.display = !q || el.dataset.text.includes(q) ? "" : "none"; });
   }
-  const keep = fn => { const y = scrollY; return show().then(() => scrollTo(0, y)); };
+  // redraw without losing your place: scroll position, search text and which sections are open
+  const keep = fn => { const y = scrollY; return show().then(() => { if ($("#q").value) filter(); scrollTo(0, y); }); };
   document.addEventListener("click", ev => {
     const t = ev.target;
     const tp = t.closest("[data-tip]");
     if (tp) { tipFor === tp ? hideTip() : showTip(tp); ev.stopPropagation(); return; }
     if (tipFor && !t.closest("#tip")) hideTip();
+    const sm = t.closest("details.grp > summary");
+    if (sm) { const d = sm.parentElement; setTimeout(() => { S.grp[d.dataset.g] = d.open; store.set("grp", S.grp); }, 0); }
     if (t.dataset.mode) { if (t.dataset.mode !== S.mode) { store.set("mode", t.dataset.mode); location.reload(); } return; }
     if (t.dataset.ttab != null) { S.ttab = +t.dataset.ttab; store.set("ttab", S.ttab); show(); return; }
     if (t.id === "tonly") { S.tonly = !S.tonly; store.set("tonly", S.tonly); keep(); return; }
@@ -675,6 +707,14 @@
     if (t.dataset.team) { S.team[t.dataset.key] = +t.dataset.team; store.set("team", S.team); keep(); return; }
     if (t.dataset.leader) { S.team[t.dataset.key] = t.dataset.leader; store.set("team", S.team); keep(); return; }
     if (t.dataset.show) { S.show = t.dataset.show; store.set("show", S.show); keep(); return; }
+    const pk = t.closest("[data-pick]");
+    if (pk) { const a = pk.dataset.a, sp = pk.dataset.pick, r = NUZ.areas[a];
+      if (r && r.st === "caught" && r.s === sp) { delete NUZ.areas[a]; delete NUZ.dead[a]; } else { NUZ.areas[a] = { s: sp, st: "caught" }; }
+      saveNuz(); keep(); return; }
+    if (t.dataset.ast) { const a = t.dataset.a, v = t.dataset.ast, r = NUZ.areas[a];
+      if (r && r.st === v) delete NUZ.areas[a]; else NUZ.areas[a] = { st: v };
+      delete NUZ.dead[a]; saveNuz(); keep(); return; }
+    if (t.dataset.grpall) { const o = t.dataset.grpall === "1"; document.querySelectorAll("details.grp").forEach(d => { S.grp[d.dataset.g] = o; }); store.set("grp", S.grp); keep(); return; }
     if (t.dataset.dead) { const a = t.dataset.dead; NUZ.dead[a] ? delete NUZ.dead[a] : (NUZ.dead[a] = Date.now()); saveNuz(); keep(); return; }
     if (t.dataset.xdead) { const x = NUZ.extra[+t.dataset.xdead]; x.dead = !x.dead; saveNuz(); keep(); return; }
     if (t.id === "histcur") { PEND = SAVE; keep(); return; }

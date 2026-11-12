@@ -57,7 +57,20 @@ for n, d in MONS.items():
         to = NAME.get(e["target"])
         if not to: continue
         m, p = e["method"], e["param"]
-        if m.startswith("EVO_LEVEL"): d["evos"].append({"to": to, "kind": "level", "p": int(p) if str(p).isdigit() else 1})
+        lab = e.get("label") or ""
+        cond = (re.search(r"\((.*)\)", lab) or [None, ""])[1]
+        if m.startswith("EVO_LEVEL") and str(p).isdigit() and int(p) > 0: d["evos"].append({"to": to, "kind": "level", "p": int(p)})
+        elif m.startswith("EVO_LEVEL"):
+            # level up with a condition instead of a level
+            mk = re.search(r"Knows ([A-Za-z' -]+?)(?:,|$)", cond) or re.search(r"Use ([A-Za-z' -]+?) \d+ Times", cond)
+            mi = re.search(r"In ([A-Za-z0-9. ]+)$", cond)
+            mh = re.search(r"Holding ([A-Za-z' -]+)$", cond)
+            if mk: d["evos"].append({"to": to, "kind": "move", "p": mk.group(1).strip()})
+            elif mi: d["evos"].append({"to": to, "kind": "place", "p": mi.group(1).strip()})
+            elif mh: d["evos"].append({"to": to, "kind": "item", "p": mh.group(1).strip()})
+            elif "Friendship" in cond: d["evos"].append({"to": to, "kind": "friendship", "p": cond})
+            elif re.search(r"Recoil|in Party", cond): d["evos"].append({"to": to, "kind": "other", "p": cond})
+            else: d["evos"].append({"to": to, "kind": "level", "p": 1})
         elif m == "EVO_ITEM": d["evos"].append({"to": to, "kind": "item", "p": e.get("itemName") or p})
         elif m == "EVO_SPLIT_FROM_EVO": d["evos"].append({"to": to, "kind": "shedinja", "p": None})
         else: d["evos"].append({"to": to, "kind": "other", "p": e.get("label")})
@@ -245,6 +258,10 @@ def evo_ok(e, n, stage, cap):
     k = e["kind"]
     if k == "level": return e["p"] <= cap
     if k == "item": return EVO_ITEM.get(e["p"], 99) <= stage
+    if k == "friendship": return True
+    if k == "move":       # level up knowing a move: it has to be in the level-up list by the cap, or on a TM you can have
+        return any(l <= cap and mv == e["p"] for l, mv in MONS[n]["lv"]) or (e["p"] in MONS[n]["tm"] and TM_BY_MOVE.get(e["p"], 99) <= stage)
+    if k == "place": return (reach(e["p"]) if reach(e["p"]) is not None else 99) <= stage
     return False
 def evolve(b, stage, cap):
     out = []
@@ -476,13 +493,15 @@ def main():
                              "other": [x for x, g in (("Surf", SURF), ("Old Rod", OLD), ("Good Rod", GOOD), ("Super Rod", SUPER), ("Rock Smash", ROCKSMASH)) if lo < g <= stage]}
                 prev[tb] = {r["s"] for r in P}; prevst[tb] = stage
             dbl = mode == "hard" and tab == "G" and key not in ("will", "koga", "bruno", "karen", "lance")
-            note = "Hard mode: this gym is a double battle; matchups are still 1-on-1." if dbl else ""
+            aiv = [ai_of(c, "Hard" if mode == "hard" and T[c]["difficulty"] == "Hard" else "Normal") for v, c in variants if c in T]
+            dbl = dbl or (bool(aiv) and all(a is not None and a & 128 for a in aiv))
+            note = "Hard mode: this gym is a double battle." if mode == "hard" and tab == "G" and dbl else ""
             if key in ("petrel1", "ariana1"): note = "The Mahogany hideout must be cleared before Pryce's gym opens (it needs Surf, so 4 badges). This team is built for the 7th-gym cap (48), which fits doing Chuck and Jasmine first; if you go earlier you'll be under-levelled by your cap."
             if key in ("gym5", "gym6", "gym7"): note = ("Chuck, Jasmine and Pryce can be done in any order and their teams scale with it: pick the leader you're facing. " + note).strip()
             dump(f"{OUT}/fights/{mode}/{key}.json", {"key": key, "label": label, "cap": cap, "team": team,
                  "variants": [{"v": v, "cols": c} for v, c in zip(vars_, cols)], "pool": P, "grid": grid, "new": new, "since": since})
             idx.append({"key": key, "label": label, "cap": cap, "split": SPLITS[stage], "loc": locs[0] if len(set(locs)) == 1 else " / ".join(dict.fromkeys(locs)),
-                        "kind": None, "notes": [], "note": note, "names": list(dict.fromkeys(names)), "ids": [], "vars": vars_, "n": len(P)})
+                        "kind": "double" if dbl else None, "notes": [], "note": note, "names": list(dict.fromkeys(names)), "ids": [], "vars": vars_, "n": len(P)})
             tabs[tab].append(key); tabs["A"].append(key)
         index[mode] = {"fights": idx, "tabs": tabs, "order": {f["key"]: i for i, f in enumerate(idx)}, "caps": {s: c for s, c in zip(SPLITS, CAPS)}}
     # ---- Nuzlocke areas

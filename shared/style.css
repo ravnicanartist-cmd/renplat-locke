@@ -209,3 +209,31 @@ a.game:hover { border-color: var(--accent); }
 table.hist td { vertical-align: top; }
 table.hist details summary { list-style: none; }
 table.hist .ml { margin: 6px 0; padding-left: 18px; }
+
+/* --- smoother controls (Nov 12) */
+button, .btn, select, summary, .tabs button, .bosspick button, .chips button { transition: background-color .12s, border-color .12s, opacity .12s, transform .08s; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+button:active, .btn:active { transform: scale(.97); }
+button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+select.field, .area select { appearance: none; -webkit-appearance: none; padding: 7px 30px 7px 10px; min-height: 36px; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+input.field { padding: 7px 10px; min-height: 36px; }
+.btn { padding: 6px 12px; min-height: 32px; } .btn.small { padding: 3px 9px; min-height: 28px; font-size: 12px; }
+.btn.on { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.btn:hover, .enc.pick button:hover { border-color: var(--accent); }
+@media (pointer: coarse) { input, select, textarea, #q { font-size: 16px !important; } .btn { min-height: 38px; } .btn.small { min-height: 34px; } }
+details.grp > summary { display: flex; align-items: center; gap: 6px; user-select: none; }
+details.grp > summary:hover { filter: brightness(1.15); }
+.gcount { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--muted); } .gcount b { color: var(--text); }
+.area .ah { min-height: 32px; } .area .ast { font-size: 13px; } .area .acts2 { margin-left: auto; display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.enc.pick button { display: inline-flex; align-items: center; gap: 2px; background: var(--panel2); color: var(--text); border: 1px solid transparent; border-radius: 6px; padding: 1px 8px 1px 0; font: inherit; font-size: 12px; cursor: pointer; }
+.enc.pick button img { width: 32px; height: 32px; image-rendering: pixelated; }
+.enc.pick button.dupe { opacity: .45; text-decoration: line-through; }
+.enc.pick button.on { background: #1f4f4a; border-color: #3fa89c; opacity: 1; text-decoration: none; }
+.enc.pick button.on::after { content: "✓"; margin-left: 4px; color: #7fe0d2; }
+.tag.big { font-size: 12px; padding: 3px 9px; font-weight: 700; } .tag.wx { background: #2f4f7f; }
+.x2 { font-size: 10px; background: #6b4f9e; color: #fff; border-radius: 3px; padding: 0 4px; margin-left: 2px; vertical-align: 1px; }
+.dblbox { background: var(--panel); border: 1px solid #6b4f9e; border-left-width: 4px; border-radius: 8px; padding: 10px 12px; margin: 10px 0; font-size: 13px; }
+.dblcols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 8px 0; }
+.dblbox ul.ml { margin: 4px 0 0; padding-left: 0; list-style: none; } .dblbox ul.ml li { margin: 2px 0; }
+#main { animation: fadein .12s ease-out; } @keyframes fadein { from { opacity: .6; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

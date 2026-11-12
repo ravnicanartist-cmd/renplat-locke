@@ -133,3 +133,8 @@ td .mvs { margin-top: 4px; }
 #tip::after { content: ""; position: absolute; left: calc(var(--ax, 50%) - 8px); bottom: -8px; border: 8px solid transparent; border-bottom: 0; border-top-color: #7fb2c4; }
 #tip.below::after { bottom: auto; top: -8px; border: 8px solid transparent; border-top: 0; border-bottom-color: #7fb2c4; }
 .mvx > :not(i) { white-space: nowrap; }
+
+/* smoother controls (Nov 12) */
+button, select, summary { transition: background-color .12s, border-color .12s, opacity .12s; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+@media (pointer: coarse) { input, select, textarea { font-size: 16px !important; } }

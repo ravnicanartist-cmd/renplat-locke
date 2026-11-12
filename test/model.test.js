@@ -12,7 +12,9 @@ for (const g of games) {
     let n = 0;
     for (const f of fights) {
       const d = JSON.parse(fs.readFileSync(path.join(D, "fights", mode, f.key + ".json")));
-      const bosses = d.team.map(M.bossMon);
+      const bosses = d.team.map(m => null);
+      (d.variants || [{ cols: d.team.map((m, i) => i) }]).forEach(v => M.bossTeam(v.cols.map(c => d.team[c])).forEach((b, k) => { bosses[v.cols[k]] = b; }));
+      bosses.forEach((b, c) => { if (!b) bosses[c] = M.bossTeam([d.team[c]])[0]; });
       d.pool.forEach((r, i) => {
         const p = M.mon(r.s, d.cap, { ab: r.ab, moves: r.moves });
         bosses.forEach((b, j) => {
