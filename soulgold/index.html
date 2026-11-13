@@ -22,12 +22,17 @@
 <a id="top" href="#" onclick="scrollTo(0,0);return false" title="Back to top">↑</a>
 <script>
 window.GAME = {
-  id: "soulgold", store: "soulgold", gist: "soulgold-locke.json", v: 8, save: "sgx", modes: ["normal", "hard"],
+  id: "soulgold", store: "soulgold", gist: "soulgold-locke.json", v: 9, save: "sgx", modes: ["normal", "hard"],
   sprites: "../rupture/img/pokesprite/",
   calcByMode: { normal: "../rupture/index.html?data=soulgold&gen=8&dmgGen=8&types=6&customPoks=1&noSwitch=1&evs=0",
                 hard: "../rupture/index.html?data=soulgold-hard&gen=8&dmgGen=8&types=6&customPoks=1&noSwitch=1&evs=0" },
   tabs: [["G", "Gyms & League"], ["V", "Rivals & Team Rocket"], ["A", "Everything, in story order"]],
   starters: ["Grass starter", "Fire starter", "Water starter"],
+  // one-per-game gifts: once you own one of a group, the others stop counting
+  oneOf: [
+    { key: "Odd Egg on Route 34", area: "Route 34", fams: ["Bagon", "Gible", "Feebas", "Riolu", "Jangmo-o", "Zorua-Hisui", "Goomy"] },
+    { key: "Cherrygrove City (choose one)", area: "Cherrygrove City", fams: ["Rattata-Alola", "Zigzagoon-Galar"] },
+    { key: "Bill in Ecruteak (choose one)", area: "Ecruteak City", fams: ["Eevee-Starter", "Pikachu-Starter"] }],
   badges: { falkner: "Zephyr", bugsy: "Hive", whitney: "Plain", morty: "Fog", clair: "Rising" },
   badgeCount: { gym5: [["Storm", "Mineral", "Glacier"], 1], gym6: [["Storm", "Mineral", "Glacier"], 2], gym7: [["Storm", "Mineral", "Glacier"], 3] },
   leaderBadge: { Chuck: "Storm", Jasmine: "Mineral", Pryce: "Glacier" },
@@ -53,6 +58,6 @@ window.GAME = {
 </script>
 <script src="../shared/model.js?v=5"></script>
 <script src="../shared/savereader_sgx.js?v=1"></script>
-<script src="../shared/app.js?v=13"></script>
+<script src="../shared/app.js?v=14"></script>
 </body>
 </html>

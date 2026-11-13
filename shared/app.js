@@ -131,12 +131,21 @@
   }
   const refreshOwned = () => { ALIVE = aliveFams(); CAUGHT = caughtFams(); CURSED = cursedFams(); };
   const isMine = r => STARS.has(fam(r.s)) || (r.from || []).some(f => STARS.has(fam(f))) || ALIVE.has(fam(r.s));
+  // one-per-game gifts (SoulGold: Odd Egg, "choose one" gifts): once one of the group is yours the rest are gone
+  const GRP = () => (G.oneOf || []).map(g => ({ ...g, ff: g.fams.map(fam), taken: (NUZ.extra || []).some(x => x.where === g.area && g.fams.map(fam).includes(fam(x.s))) }));
+  function giftGone(r) {
+    if (r.areas.length || !G.oneOf) return false;
+    const gs = GRP(), mine = fam(r.s);
+    const left = r.where.filter(w => { const g = gs.find(g => w.startsWith(g.key)); return !g || !g.taken || (g.ff.includes(mine) && (NUZ.extra || []).some(x => x.where === g.area && fam(x.s) === mine)); });
+    return left.length === 0;
+  }
   function nuzTag(r) {
     if (!NUZ.on) return null;
     const f = fam(r.s);
     if (ALIVE.has(f)) return ["boss", "Yours"];
     if (CURSED.has(f)) return ["nz-dupe", "Cursed (gauntlet)"];
     if (CAUGHT.has(f)) return ["nz-dupe", "Dupe"];
+    if (giftGone(r)) return ["nz-used", "Gift already taken (1 per game)"];
     if (!r.areas.length) return ["nz-gift", "Gift / trade (free extra)"];
     const free = r.areas.filter(a => !NUZ.areas[a]);
     return free.length ? ["nz-free", "Catch: " + free.join(", ")] : ["nz-used", "Areas used"];
@@ -229,6 +238,8 @@
       // an area that shares its met location with another (SoulGold: fossils revived at the Ruins of Alph lab)
       const sub = META.areas.find(x => x.met === a && x.mons.some(mm => fam(mm[0]) === f));
       if (sub) a = sub.name;
+      const og = (G.oneOf || []).find(g => g.fams.map(fam).includes(f) && !(wildAt[a] && wildAt[a].has(f)));
+      if (og && f !== starterFam) { if (!(NUZ.extra || []).some(x => fam(x.s) === f)) (NUZ.extra = NUZ.extra || []).push({ s: m.name, where: og.area, auto: 1 }); return; }
       if (!a || !META.areas.some(x => x.name === a)) return;
       if (f === starterFam) { if (!(NUZ.extra || []).some(x => fam(x.s) === f)) (NUZ.extra = NUZ.extra || []).push({ s: m.name, where: "Starter", auto: 1 }); return; }
       const wild = wildAt[a] && wildAt[a].has(f), gift = giftAt[a] && giftAt[a].has(f);
@@ -458,7 +469,8 @@
             ${r.st === "caught" ? `<button class="btn small ${isDead ? "" : "red"}" data-dead="${esc(a.name)}">${isDead ? "Undo death" : "It died"}</button>` : ""}</span>` : '<span class="muted">Gifts only</span>'}</div>
           ${methodRows(wild).map(([lab, cls, ms]) => `<div class="mrow"><span class="mlab ${cls}">${esc(lab)}</span><div class="enc pick">${ms.map(m => `<button class="${(CAUGHT.has(fam(m[0])) || CURSED.has(fam(m[0]))) && r.s !== m[0] ? "dupe" : ""} ${r.st === "caught" && r.s === m[0] ? "on" : ""}" data-pick="${esc(m[0])}" data-a="${esc(a.name)}" title="${esc(m[1])}${m[5] ? " · encounter rate " + esc(m[5]) : ""}${CAUGHT.has(fam(m[0])) && r.s !== m[0] ? " · dupe: you already have this family" : ""}">${spr(m[0])}${esc(m[0])}${m[7] ? ` <span class="muted">${esc(m[7])}</span>` : ""}${m[5] ? ` <span class="pct">${esc(m[5])}</span>` : ""}</button>`).join("")}</div></div>`).join("")}
           ${r.st === "caught" && r.s && !wild.some(m => m[0] === r.s) ? `<div class="mrow"><span class="mlab m-own">Yours</span><div class="enc pick"><button class="on" data-pick="${esc(r.s)}" data-a="${esc(a.name)}">${spr(r.s)}${esc(r.s)}</button></div></div>` : ""}
-          ${gifts.length ? `<div class="mrow"><span class="mlab m-gift">Free extras</span><div class="enc">${gifts.map(m => `<span title="${esc(m[1])}">${spr(m[0])}${esc(m[0])} <span class="muted">${esc(m[2])}</span></span>`).join("")}</div></div>` : ""}
+          ${gifts.length ? `<div class="mrow"><span class="mlab m-gift">Free extras</span><div class="enc pick">${gifts.map(m => { const got = (NUZ.extra || []).some(x => fam(x.s) === fam(m[0])), gone = !got && giftGone({ s: m[0], areas: [], where: [m[1]] });
+          return `<button class="${got ? "on" : ""} ${gone ? "dupe" : ""}" data-gift="${esc(m[0])}" data-a="${esc(a.name)}" data-w="${esc(m[1])}" title="${esc(m[1])} · tap when you have it (tap again to undo)">${spr(m[0])}${esc(m[0])} <span class="muted">${esc(m[2])}</span></button>`; }).join("")}</div></div>` : ""}
           ${(G.repel || {})[a.name] ? `<div class="repel"><b>Repel trick</b> (lead with this level and use a Repel): ${G.repel[a.name].map(esc).join("; ")}</div>` : ""}</div>`;
       });
       h += `</details>`;
@@ -733,6 +745,11 @@
     if (t.dataset.team) { S.team[t.dataset.key] = +t.dataset.team; store.set("team", S.team); keep(); return; }
     if (t.dataset.leader) { S.team[t.dataset.key] = t.dataset.leader; store.set("team", S.team); keep(); return; }
     if (t.dataset.show) { S.show = t.dataset.show; store.set("show", S.show); keep(); return; }
+    const gf = t.closest("[data-gift]");
+    if (gf) { const sp = gf.dataset.gift, f = fam(sp), g = (G.oneOf || []).find(g => gf.dataset.w.startsWith(g.key)), where = g ? g.area : gf.dataset.a;
+      NUZ.extra = NUZ.extra || []; const i = NUZ.extra.findIndex(x => fam(x.s) === f);
+      if (i >= 0) NUZ.extra.splice(i, 1); else NUZ.extra.push({ s: sp, where });
+      saveNuz(); refreshOwned(); keep(); return; }
     const pk = t.closest("[data-pick]");
     if (pk) { const a = pk.dataset.a, sp = pk.dataset.pick, r = NUZ.areas[a];
       if (r && r.st === "caught" && r.s === sp) { delete NUZ.areas[a]; delete NUZ.dead[a]; } else { NUZ.areas[a] = { s: sp, st: "caught" }; }
